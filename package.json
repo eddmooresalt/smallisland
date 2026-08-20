@@ -1,0 +1,17 @@
+{
+  "name": "small-island",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A slow, soft dating sim set in Singapore.",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js && npx serve dist"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.0"
+  }
+}
