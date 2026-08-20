@@ -804,7 +804,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
    in the browser. Puter handles user authentication/usage.
    ============================================================ */
 const IN_CLAUDE = typeof window !== "undefined" && !!window.storage;
-const PUTER_MODEL = "openai/gpt-5.6-sol";
+const PUTER_MODEL = "openai/gpt-5-mini";
 
 const localStore = {
   async get(k) {
@@ -829,7 +829,7 @@ function readConfig() {
   try {
     const raw = localStorage.getItem(CONFIG_SLOT);
     const old = raw ? JSON.parse(raw) : {};
-    return { ...DEFAULT_CONFIG, puterModel: old.puterModel || PUTER_MODEL, provider: "puter" };
+    return { ...DEFAULT_CONFIG, puterModel: PUTER_MODEL, provider: "puter" };
   } catch (e) {
     return { ...DEFAULT_CONFIG };
   }
