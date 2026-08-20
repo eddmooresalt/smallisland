@@ -1,0 +1,1 @@
+Mobile Discover layout fix: card is constrained to the deck area, bio/tags compact on mobile, and Pass/Super Like/Like no longer overlap the profile card or bottom navigation.

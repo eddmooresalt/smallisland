@@ -804,7 +804,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
    in the browser. Puter handles user authentication/usage.
    ============================================================ */
 const IN_CLAUDE = typeof window !== "undefined" && !!window.storage;
-const PUTER_MODEL = "openai/gpt-5-mini";
+const PUTER_MODEL = "openai/gpt-5.6-sol";
 
 const localStore = {
   async get(k) {
@@ -2874,10 +2874,56 @@ const CSS = `
 .round.sup.super-cta.spent{opacity:.55;}
 .superline{font-size:9.5px; letter-spacing:.08em; padding-bottom:2px;}
 
+/* ---- mobile Discover layout: keep the card inside its lane instead of letting it
+   overflow across the action row and bottom navigation ---- */
+@media (max-width:600px){
+  .stage{min-height:0;}
+  .discover{min-height:0; overflow:hidden;}
+  .deck{min-height:0; overflow:hidden; padding:0 4px 6px;}
+
+  .card{
+    height:calc(100% - 6px);
+    max-height:100%;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    padding:10px 10px 12px;
+  }
+  .card-photo{flex:1 1 auto; min-height:150px; overflow:hidden; border-radius:24px 24px 14px 14px;}
+  .card-photo .card-portrait{height:100%; min-height:0; aspect-ratio:auto; border-radius:24px 24px 14px 14px;}
+  .card-body{flex:0 0 auto; padding:10px 4px 0;}
+  .card-name{font-size:24px;}
+  .card-age{font-size:17px;}
+  .card-job{margin:3px 0 6px;}
+  .card-bio{
+    font-size:13.5px;
+    line-height:1.42;
+    display:-webkit-box;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:3;
+    overflow:hidden;
+  }
+  .tagrow{flex-wrap:nowrap; overflow:hidden; gap:5px; margin-top:8px;}
+  .tagrow li{white-space:nowrap; padding:3px 8px; font-size:10.5px;}
+
+  .controls{flex:0 0 auto; gap:9px; padding:8px 0 2px;}
+  .round{width:50px; height:50px;}
+  .round.like{width:58px; height:58px;}
+  .round.sup.super-cta{width:112px; height:52px;}
+  .superline{flex:0 0 auto; margin:2px 0 4px; line-height:1.25;}
+}
+
 @media (max-width:360px){
   .profile-grid.three{grid-template-columns:1fr 1fr;}
-  .round.sup.super-cta{width:104px; padding:0 9px;}
-  .controls{gap:7px;}
+  .round.sup.super-cta{width:102px; padding:0 8px;}
+  .controls{gap:6px;}
+}
+
+@media (max-height:700px) and (max-width:600px){
+  .card-photo{min-height:120px;}
+  .card-bio{-webkit-line-clamp:2;}
+  .tagrow{display:none;}
+  .controls{padding-top:5px;}
 }
 
 @media (prefers-reduced-motion:reduce){
