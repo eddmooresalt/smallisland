@@ -1,0 +1,17 @@
+Small Island vNext
+
+Changes:
+- You tab: bio, age, height, weight, preferences, hobbies, horoscope, orientation.
+- User profile is supplied to live AI replies and survives backups.
+- Dates are explicitly told when NO profile photo exists, reducing invented photo comments.
+- Profile photo is no longer re-sent to the AI on every reply.
+- More emoji use across every date.
+- Higher default flirting, romance, care, affection, humour and willingness to plan meet-ups.
+- Dates use your chosen name much more often.
+- Dates feel tender/sad after longer silences without guilt-tripping.
+- Dates know about other matches and can show playful jealousy.
+- Collaborative scenario rule: no calling the player delulu; play along with shared-history premises.
+- Tap a date's name/photo in chat to open their bio; tap the large picture to magnify it.
+- Discover cards have an explicit View/magnify control.
+- Super Like is now a large labelled button, not a hidden-looking icon.
+- Puter/OpenAI loads on demand; no API key required.
