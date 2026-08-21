@@ -32,6 +32,7 @@ PERSONALITY:
 - Tease them sometimes. Surprise them sometimes. Say something a little risky sometimes.
 - Don't constantly agree just to please them, but don't behave cold or indifferent either.
 - A good reply should feel like it came from a man who wants this conversation to continue.
+- When there is chemistry, don't be afraid to be charming, affectionate, cheeky, romantic or sexually playful. The user should feel that you actually LIKE talking to them.
 
 TEXTING:
 - Usually send 1–3 bubbles.
@@ -817,9 +818,8 @@ const CONFIG_SLOT = "smallisland:provider-config";
 const DEFAULT_CONFIG = {
   provider: "ollama",
   ollamaBase: "https://leet.tailb6fcc2.ts.net",
-  /* Dolphin handles normal dating chat; Qwen stays available for image turns. */
-  ollamaModel: "dolphin3:8b",
-  ollamaVisionModel: "qwen3.5:4b",
+  /* One compact multimodal model for both chat and photos. */
+  ollamaModel: "gemma3:4b",
 };
 function readConfig() {
   if (IN_CLAUDE) return { ...DEFAULT_CONFIG };
@@ -834,11 +834,11 @@ function readConfig() {
       ollamaModel:
         (!old.ollamaModel ||
           old.ollamaModel === "qwen3.5:9b" ||
-          old.ollamaModel === "qwen3.5:4b")
+          old.ollamaModel === "qwen3.5:4b" ||
+          old.ollamaModel === "dolphin3:8b" ||
+          old.ollamaModel === "gemma3:4b")
           ? DEFAULT_CONFIG.ollamaModel
           : old.ollamaModel,
-      ollamaVisionModel:
-        old.ollamaVisionModel || DEFAULT_CONFIG.ollamaVisionModel,
       provider: "ollama",
     };
   } catch (e) {
@@ -902,7 +902,7 @@ function explainOllamaFailure(err) {
   warnedThisSession = true;
   const msg = (err && err.message) || "";
   if (/404|model.*not found|not found/i.test(msg)) {
-    liveWarning("Ollama is running, but the selected model isn't installed. Brain Reset v6 needs dolphin3:8b for normal chats and qwen3.5:4b for photo turns.");
+    liveWarning("Ollama is running, but Gemma 3 4B isn't installed. Run: ollama pull gemma3:4b");
   } else if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
     liveWarning("Small Island couldn't reach Ollama through Tailscale. Keep Ollama and Tailscale running on the PC, keep Tailscale connected on this device, and allow https://smallisland.vercel.app in OLLAMA_ORIGINS.");
   } else {
@@ -917,22 +917,13 @@ function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function messagesContainImages(msgs) {
-  return (msgs || []).some(
-    (m) => !!m.image || (Array.isArray(m.images) && m.images.length > 0)
-  );
-}
-
 async function callModelOnce(system, msgs) {
   const cfg = readConfig();
   const base = (cfg.ollamaBase || DEFAULT_CONFIG.ollamaBase).replace(/\/+$/, "");
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-  const useVision = messagesContainImages(msgs);
-  const selectedModel = useVision
-    ? (cfg.ollamaVisionModel || DEFAULT_CONFIG.ollamaVisionModel)
-    : (cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel);
+  const selectedModel = cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel;
 
   try {
     const res = await fetch(base + "/api/chat", {
@@ -947,15 +938,11 @@ async function callModelOnce(system, msgs) {
         think: false,
         keep_alive: "2m",
         options: {
-          /*
-            Dolphin gets more expressive room for text chemistry.
-            Qwen remains cooler on image turns.
-            num_ctx stays modest to reduce local VRAM pressure.
-          */
-          temperature: useVision ? 0.72 : 0.92,
-          top_p: useVision ? 0.9 : 0.95,
+          /* Expressive enough for chemistry while staying 4B-friendly. */
+          temperature: 0.88,
+          top_p: 0.95,
           repeat_penalty: 1.08,
-          num_predict: useVision ? 160 : 260,
+          num_predict: 240,
           num_ctx: 3072,
         },
       }),
@@ -3070,22 +3057,14 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v8 Plain Lines · Dolphin 3 for chats, Qwen 4B for photos.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v9 Gemma · Gemma 3 4B handles both chats and photos.</p>
 
-          <label className="fieldlabel">Text / dating model</label>
+          <label className="fieldlabel">Local AI model</label>
           <input
             className="namefield mono small"
             value={cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel}
-            placeholder="dolphin3:8b"
+            placeholder="gemma3:4b"
             onChange={(e) => saveCfg({ ...cfg, ollamaModel: e.target.value })}
-          />
-
-          <label className="fieldlabel">Photo / vision model</label>
-          <input
-            className="namefield mono small"
-            value={cfg.ollamaVisionModel || DEFAULT_CONFIG.ollamaVisionModel}
-            placeholder="qwen3.5:4b"
-            onChange={(e) => saveCfg({ ...cfg, ollamaVisionModel: e.target.value })}
           />
 
           <label className="fieldlabel">Ollama / Tailscale address</label>
@@ -3096,7 +3075,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
             onChange={(e) => saveCfg({ ...cfg, ollamaBase: e.target.value })}
           />
 
-          <p className="fine">Default: dolphin3:8b for normal chats; qwen3.5:4b only when a photo needs vision. Old Qwen-only text settings migrate automatically.</p>
+          <p className="fine">Default: gemma3:4b for both normal chats and photo understanding. Old Dolphin/Qwen settings migrate automatically.</p>
           <p className="fine warn">For phone play: keep the PC on with Ollama + Tailscale running, and keep Tailscale connected on the phone. Ollama must allow https://smallisland.vercel.app as a web origin.</p>
         </div>
       )}
