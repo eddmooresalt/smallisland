@@ -800,11 +800,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /* ============================================================
    WHERE AM I RUNNING
    Inside Claude, keep the original artifact path. Everywhere else,
-   use Puter.js to reach an OpenAI model without putting an API key
-   in the browser. Puter handles user authentication/usage.
+   Small Island talks directly to Ollama running on this device.
+   The model stays local; GitHub/Vercel only host this frontend.
    ============================================================ */
 const IN_CLAUDE = typeof window !== "undefined" && !!window.storage;
-const PUTER_MODEL = "openai/gpt-5-mini";
 
 const localStore = {
   async get(k) {
@@ -818,25 +817,30 @@ const localStore = {
   },
 };
 
-/* kept so older backups/settings don't break; there is no secret key now */
 const CONFIG_SLOT = "smallisland:provider-config";
 const DEFAULT_CONFIG = {
-  provider: "puter",
-  puterModel: PUTER_MODEL,
+  provider: "ollama",
+  ollamaBase: "http://127.0.0.1:11434",
+  ollamaModel: "qwen3.5:9b",
 };
 function readConfig() {
   if (IN_CLAUDE) return { ...DEFAULT_CONFIG };
   try {
     const raw = localStorage.getItem(CONFIG_SLOT);
     const old = raw ? JSON.parse(raw) : {};
-    return { ...DEFAULT_CONFIG, puterModel: PUTER_MODEL, provider: "puter" };
+    return {
+      ...DEFAULT_CONFIG,
+      ollamaBase: old.ollamaBase || DEFAULT_CONFIG.ollamaBase,
+      ollamaModel: old.ollamaModel || DEFAULT_CONFIG.ollamaModel,
+      provider: "ollama",
+    };
   } catch (e) {
     return { ...DEFAULT_CONFIG };
   }
 }
 function writeConfig(cfg) {
   try {
-    localStorage.setItem(CONFIG_SLOT, JSON.stringify({ ...DEFAULT_CONFIG, ...cfg, provider: "puter" }));
+    localStorage.setItem(CONFIG_SLOT, JSON.stringify({ ...DEFAULT_CONFIG, ...cfg, provider: "ollama" }));
   } catch (e) {
     /* private browsing — settings just won't survive a refresh */
   }
@@ -862,35 +866,23 @@ function toAnthropicMessages(msgs) {
   });
 }
 
-function puterText(response) {
-  if (!response) return "";
-  if (typeof response === "string") return response;
-  const content = response.message && response.message.content;
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === "string") return part;
-        return (part && (part.text || part.content)) || "";
-      })
-      .join("");
-  }
-  if (typeof response.text === "string") return response.text;
-  return "";
-}
-
-function puterConversation(system, msgs) {
-  const messages = [{ role: "system", content: system }];
-  const images = [];
+function toOllamaMessages(system, msgs) {
+  const out = [{ role: "system", content: system }];
   for (const m of msgs) {
     const imgs = m.images || (m.image ? [m.image] : []);
-    images.push(...imgs.filter(Boolean));
-    messages.push({
+    const item = {
       role: m.role,
       content: m.text || (imgs.length ? "(sent you a photo)" : ""),
-    });
+    };
+    if (imgs.length) {
+      item.images = imgs.filter(Boolean).map((img) => {
+        const comma = img.indexOf(",");
+        return comma >= 0 ? img.slice(comma + 1) : img;
+      });
+    }
+    out.push(item);
   }
-  return { messages, images };
+  return out;
 }
 
 let warnedThisSession = false;
@@ -898,54 +890,21 @@ let liveWarningSink = null;
 function liveWarning(msg) {
   if (liveWarningSink) liveWarningSink(msg);
 }
-function explainPuterFailure(err) {
+function explainOllamaFailure(err) {
   if (warnedThisSession) return;
   warnedThisSession = true;
-  const msg = (err && (err.msg || err.message)) || "";
-  if (/auth|sign.?in|popup|permission/i.test(msg)) {
-    liveWarning("OpenAI via Puter needs you to finish the Puter sign-in/permission popup first. Using scripted replies until then.");
+  const msg = (err && err.message) || "";
+  if (/404|model.*not found|not found/i.test(msg)) {
+    liveWarning("Ollama is running, but that model isn't installed. Finish the qwen3.5 download or choose another installed model in You → how they reply.");
+  } else if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
+    liveWarning("Small Island couldn't reach local Ollama. Keep Ollama running, allow Small Island local-network access in the browser, and allow https://smallisland.vercel.app in OLLAMA_ORIGINS.");
   } else {
-    liveWarning("Couldn't reach OpenAI through Puter right now. Using scripted replies for now.");
+    liveWarning("Ollama returned an error. Check the model and local address in You → how they reply. Scripted replies are filling in for now.");
   }
-}
-
-let puterLoadPromise = null;
-function ensurePuter() {
-  if (typeof window !== "undefined" && window.puter && window.puter.ai && window.puter.ai.chat) {
-    return Promise.resolve(window.puter);
-  }
-  if (puterLoadPromise) return puterLoadPromise;
-  puterLoadPromise = new Promise((resolve, reject) => {
-    if (typeof document === "undefined") return reject(new Error("No browser document"));
-    const script = document.createElement("script");
-    let done = false;
-    const timer = setTimeout(() => {
-      if (done) return;
-      done = true;
-      reject(new Error("Puter.js took too long to load"));
-    }, 15000);
-    script.src = "https://js.puter.com/v2/";
-    script.async = true;
-    script.onload = () => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      if (window.puter && window.puter.ai && window.puter.ai.chat) resolve(window.puter);
-      else reject(new Error("Puter.js loaded but AI was unavailable"));
-    };
-    script.onerror = () => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      reject(new Error("Could not load Puter.js"));
-    };
-    document.head.appendChild(script);
-  });
-  return puterLoadPromise;
 }
 
 /* one door to the model */
-async function callClaude(system, msgs) {
+async function callModel(system, msgs) {
   /* Preserve the old Claude-artifact behaviour when opened there. */
   if (IN_CLAUDE) {
     try {
@@ -968,36 +927,33 @@ async function callClaude(system, msgs) {
   }
 
   try {
-    if (typeof window === "undefined") throw new Error("No browser window");
-    await ensurePuter();
-
     const cfg = readConfig();
-    const model = cfg.puterModel || PUTER_MODEL;
-    const { messages, images } = puterConversation(system, msgs);
-    let response;
-
-    if (images.length) {
-      /* Puter accepts a prompt plus one or more media URLs/files. Flatten the
-         transcript so the system/persona and conversation are still present. */
-      const prompt = messages
-        .map((m) => m.role.toUpperCase() + ":\n" + (m.content || ""))
-        .join("\n\n") +
-        "\n\nASSISTANT:\nReply now as the matched person. Output only the text message(s).";
-      response = await window.puter.ai.chat(prompt, images.length === 1 ? images[0] : images, {
-        model,
-        max_tokens: 1000,
-      });
-    } else {
-      response = await window.puter.ai.chat(messages, {
-        model,
-        max_tokens: 1000,
-      });
+    const base = (cfg.ollamaBase || DEFAULT_CONFIG.ollamaBase).replace(/\/+$/, "");
+    const res = await fetch(base + "/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      targetAddressSpace: "local",
+      body: JSON.stringify({
+        model: cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel,
+        messages: toOllamaMessages(system, msgs),
+        stream: false,
+        think: false,
+        keep_alive: "10m",
+        options: {
+          temperature: 0.9,
+          num_predict: 220,
+        },
+      }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      const detail = data && (data.error || data.message);
+      throw new Error("Ollama response " + res.status + (detail ? ": " + detail : ""));
     }
-
-    const text = puterText(response).trim();
-    return text || null;
+    const text = data && data.message && data.message.content;
+    return typeof text === "string" && text.trim() ? text.trim() : null;
   } catch (err) {
-    explainPuterFailure(err);
+    explainOllamaFailure(err);
     return null;
   }
 }
@@ -1226,7 +1182,7 @@ async function askNudge(person, history, me, otherDates) {
       quiet +
       " Send your next text now, unprompted, picking up something specific from above. Separate texts with |||. Output only the texts.",
   };
-  const res = await callClaude(buildSystem(person) + userProfileNote(me, otherDates) + NUDGE_RULES, [msg]);
+  const res = await callModel(buildSystem(person) + userProfileNote(me, otherDates) + NUDGE_RULES, [msg]);
   return res ? splitLines(res) : null;
 }
 
@@ -1272,7 +1228,7 @@ async function askDate(person, history, me, otherDates) {
     delete first.image;
   }
 
-  const text = await callClaude(system, msgs);
+  const text = await callModel(system, msgs);
   return text ? splitLines(text) : null;
 }
 
@@ -2352,9 +2308,26 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Live — OpenAI is writing replies through Puter.js. No API key needed.</p>
-          <p className="fine">The first AI message may ask you to sign in to Puter. Puter supplies the OpenAI connection and applies its own monthly usage allowance to your account.</p>
-          <p className="fine mono">Model: {cfg.puterModel || PUTER_MODEL}</p>
+          <p className="livenote on"><i className="livedot" />Local AI — Ollama writes replies on your own PC. No per-message API bill.</p>
+
+          <label className="fieldlabel">Model</label>
+          <input
+            className="namefield mono small"
+            value={cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel}
+            placeholder="qwen3.5:9b"
+            onChange={(e) => saveCfg({ ...cfg, ollamaModel: e.target.value })}
+          />
+
+          <label className="fieldlabel">Ollama address</label>
+          <input
+            className="namefield mono small"
+            value={cfg.ollamaBase || DEFAULT_CONFIG.ollamaBase}
+            placeholder="http://127.0.0.1:11434"
+            onChange={(e) => saveCfg({ ...cfg, ollamaBase: e.target.value })}
+          />
+
+          <p className="fine">Default: qwen3.5:9b. If it is too heavy, pull and switch to qwen3.5:4b.</p>
+          <p className="fine warn">On Chrome, allow Small Island to access devices on your local network when prompted. Ollama must also allow https://smallisland.vercel.app as a web origin.</p>
         </div>
       )}
 
