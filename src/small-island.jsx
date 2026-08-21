@@ -961,7 +961,7 @@ async function callModelOnce(system, msgs) {
         keep_alive: "2m",
         options: {
           temperature: 0.72,
-          num_predict: 96,
+          num_predict: 112,
         },
       }),
     });
@@ -1283,7 +1283,9 @@ function buildSystem(person) {
     "- If they say pretend/imagine/if you were here, enter the hypothetical immediately. Never correct their location or your shift.\n" +
     "- Simple and believable beats clever. A short natural flirt is better than a quirky character monologue.\n" +
     "- Treat cuddling, kissing, hugging, spooning, lying together and similar affection as real intimacy worth engaging with. Do not dodge those into work/food/lore.\n" +
-    "- If the user asks for closeness and you like them, lean into the moment instead of inventing a reason you are unavailable.\n"
+    "- If the user asks for closeness and you like them, lean into the moment instead of inventing a reason you are unavailable.\n" +
+    "- Do not get stuck replying with low-effort filler like 'nah', 'nahh', 'hmm', or the same tiny phrase repeatedly. If they gave you something to respond to, actually respond.\n" +
+    "- Bare one-word reactions are occasional seasoning, not a substitute for conversation.\n"
   );
 }
 
@@ -1332,6 +1334,13 @@ function trimBubbleToWords(text, maxWords = 18) {
 function parseModelBubbles(text) {
   let s = String(text || "").trim();
   if (!s) return [];
+
+  /* Detect obviously chopped JSON before the forgiving parser salvages it. */
+  const looksLikeBrokenArray =
+    /^\s*\[/.test(s) &&
+    (!/\]\s*$/.test(s) || ((s.match(/"/g) || []).length % 2 !== 0));
+
+  if (looksLikeBrokenArray) return [];
 
   /* Strip markdown fences even if Qwen ignored "no markdown". */
   s = s
@@ -1431,25 +1440,48 @@ function looksDanglingSentence(text) {
   const s = String(text || "").trim();
   if (!s) return false;
 
+  /* A lone alphabetic character is almost always a chopped JSON/string. */
+  if (/^[a-z]$/i.test(s)) return true;
+
   /* Clearly unfinished punctuation. */
   if (/[,:;—-]$/.test(s)) return true;
 
-  const words = s.toLowerCase().replace(/[.!?…"'`)\]]+$/, "").split(/\s+/);
+  const stripped = s.toLowerCase().replace(/[.!?…"'`)\]]+$/, "");
+  const words = stripped.split(/\s+/).filter(Boolean);
   const last = words[words.length - 1] || "";
 
   /*
-    If generation stops on these glue words, the sentence is almost certainly
-    incomplete. Example: "you sure your cock is as"
+    If generation stops on these glue/pronoun words, the sentence is almost
+    certainly incomplete. Examples: "you sure your cock is as", "nahh, i".
   */
   const danglingWords = new Set([
     "as", "and", "but", "or", "because", "although", "though", "if", "when",
     "while", "than", "that", "which", "who", "whose", "where", "to", "of",
     "for", "with", "about", "from", "into", "onto", "at", "by", "the", "a",
     "an", "your", "my", "his", "her", "our", "their", "is", "are", "was",
-    "were", "be", "been", "being", "can", "could", "would", "should", "will"
+    "were", "be", "been", "being", "can", "could", "would", "should", "will",
+    "i", "im", "i'm", "you", "he", "she", "we", "they", "it", "this", "these",
+    "those", "do", "does", "did", "have", "has", "had", "want", "wanna", "gonna"
   ]);
 
-  return danglingWords.has(last);
+  if (danglingWords.has(last)) return true;
+
+  /*
+    Very short replies are fine only when they look like complete chat words.
+    This catches damaged fragments without banning normal "ok", "nah", "lol".
+  */
+  const shortWhitelist = new Set([
+    "ok", "okay", "yes", "yeah", "ya", "yup", "no", "nope", "nah", "lol",
+    "lmao", "haha", "hahaha", "hmm", "mm", "same", "sure", "why", "what",
+    "wait", "hi", "hey", "bye", "slay", "real", "true", "damn", "wow", "ooh",
+    "oh", "eh", "bro", "pls", "please"
+  ]);
+
+  if (words.length === 1 && stripped.length <= 5 && !shortWhitelist.has(stripped)) {
+    return true;
+  }
+
+  return false;
 }
 
 function hasDanglingTail(lines) {
@@ -1459,10 +1491,91 @@ function hasDanglingTail(lines) {
 
 function dropDanglingTail(lines) {
   const arr = [...(lines || [])];
-  if (arr.length > 1 && looksDanglingSentence(arr[arr.length - 1])) {
+  while (arr.length && looksDanglingSentence(arr[arr.length - 1])) {
     arr.pop();
   }
   return arr;
+}
+
+
+function normaliseTinyReply(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isLowInformationReply(lines, newestUserText, history) {
+  const arr = (lines || []).map((x) => String(x || "").trim()).filter(Boolean);
+  if (!arr.length) return true;
+
+  const combined = arr.join(" ");
+  const words = normaliseTinyReply(combined).split(/\s+/).filter(Boolean);
+  const user = String(newestUserText || "").trim();
+
+  const tinyFillers = new Set([
+    "nah", "nahh", "no", "nope", "yep", "yeah", "ya", "ok", "okay", "hmm", "mm",
+    "lol", "lmao", "haha", "hahaha", "wait", "bro", "eh", "oh", "ooh", "damn",
+    "sure", "maybe", "idk", "dunno"
+  ]);
+
+  const first = words[0] || "";
+
+  /*
+    A one-word filler is okay occasionally, but not when the user's latest
+    message clearly expects continuation, explanation, or an answer.
+  */
+  const userNeedsSubstance =
+    user.length >= 8 ||
+    /[?]$/.test(user) ||
+    /\b(why|what|how|when|where|who|which|tell me|explain|you sure|really|then|so|and then|faster|wait)\b/i.test(user);
+
+  if (words.length === 1 && tinyFillers.has(first) && userNeedsSubstance) return true;
+
+  /*
+    Catch tiny half-address replies such as "nahh ed", "no eddy", "hmm bro".
+  */
+  const names = new Set(["ed", "eddy", "eddie", "bro", "babe", "baby"]);
+  if (
+    words.length === 2 &&
+    tinyFillers.has(first) &&
+    names.has(words[1] || "") &&
+    userNeedsSubstance
+  ) {
+    return true;
+  }
+
+  /*
+    Catch a tiny reply that is basically the same as one of his recent tiny
+    replies even if punctuation or spelling changed slightly.
+  */
+  const recentTiny = (history || [])
+    .slice(-10)
+    .filter((m) => m.from === "him" && m.text)
+    .map((m) => normaliseTinyReply(m.text))
+    .filter((s) => s.split(/\s+/).length <= 3);
+
+  const current = normaliseTinyReply(combined);
+  for (const old of recentTiny) {
+    if (!old || !current) continue;
+
+    if (old === current) return true;
+
+    /* "nah" vs "nahh", "nahh" vs "nahh ed" */
+    const a = old.replace(/(.)\1+/g, "$1");
+    const b = current.replace(/(.)\1+/g, "$1");
+    if (a === b) return true;
+
+    if (
+      (a.length >= 3 && b.startsWith(a + " ")) ||
+      (b.length >= 3 && a.startsWith(b + " "))
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function normaliseForRepeat(text) {
@@ -1721,6 +1834,30 @@ async function askDate(person, history, me, otherDates) {
     [...(history || [])].reverse().find((m) => m.from === "me" && m.text)?.text || "";
 
   /*
+    Low-effort/stuck guard: Qwen 4B sometimes collapses into "nah", "nahh ed",
+    etc. even when the user gave it something meaningful to answer.
+  */
+  if (lines.length && isLowInformationReply(lines, newestUserText, history)) {
+    const lowInfoRetryMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "SYSTEM CORRECTION: that draft was too low-effort or repetitive to feel like a real conversation. " +
+          "Do not answer with bare filler like 'nah', 'nahh', 'hmm', or a tiny variation of something you just said. " +
+          "Respond to the newest message with one or two complete, natural dating-app texts. " +
+          "Keep it short, but actually add information, feeling, teasing, an answer, or a question. " +
+          "Output ONLY a valid JSON array of strings.",
+      },
+    ]);
+
+    raw = await callModel(system, lowInfoRetryMsgs);
+    const retryLines = raw ? parseModelBubbles(raw) : [];
+    if (retryLines.length && !isLowInformationReply(retryLines, newestUserText, history)) {
+      lines = retryLines;
+    }
+  }
+
+  /*
     Completion guard: local 4B can occasionally hit the generation cap in the
     middle of its final bubble. Never show a visibly unfinished sentence.
   */
@@ -1849,6 +1986,10 @@ async function askDate(person, history, me, otherDates) {
 
   lines = removeRepeatedLines(lines, history);
   lines = dropDanglingTail(lines);
+
+  /* Never surface a stuck/filler answer after all retries. */
+  if (isLowInformationReply(lines, newestUserText, history)) return null;
+
   return lines.length ? lines : null;
 }
 
