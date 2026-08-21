@@ -820,8 +820,8 @@ const localStore = {
 const CONFIG_SLOT = "smallisland:provider-config";
 const DEFAULT_CONFIG = {
   provider: "ollama",
-  ollamaBase: "http://127.0.0.1:11434",
-  ollamaModel: "qwen3.5:9b",
+  ollamaBase: "https://leet.tailb6fcc2.ts.net",
+  ollamaModel: "qwen3.5:4b",
 };
 function readConfig() {
   if (IN_CLAUDE) return { ...DEFAULT_CONFIG };
@@ -830,8 +830,12 @@ function readConfig() {
     const old = raw ? JSON.parse(raw) : {};
     return {
       ...DEFAULT_CONFIG,
-      ollamaBase: old.ollamaBase || DEFAULT_CONFIG.ollamaBase,
-      ollamaModel: old.ollamaModel || DEFAULT_CONFIG.ollamaModel,
+      ollamaBase: (!old.ollamaBase || /^(https?:\/\/)?(127\.0\.0\.1|localhost)(?::\d+)?\/?$/i.test(old.ollamaBase))
+        ? DEFAULT_CONFIG.ollamaBase
+        : old.ollamaBase,
+      ollamaModel: (!old.ollamaModel || old.ollamaModel === "qwen3.5:9b")
+        ? DEFAULT_CONFIG.ollamaModel
+        : old.ollamaModel,
       provider: "ollama",
     };
   } catch (e) {
@@ -897,7 +901,7 @@ function explainOllamaFailure(err) {
   if (/404|model.*not found|not found/i.test(msg)) {
     liveWarning("Ollama is running, but that model isn't installed. Finish the qwen3.5 download or choose another installed model in You → how they reply.");
   } else if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
-    liveWarning("Small Island couldn't reach local Ollama. Keep Ollama running, allow Small Island local-network access in the browser, and allow https://smallisland.vercel.app in OLLAMA_ORIGINS.");
+    liveWarning("Small Island couldn't reach Ollama through Tailscale. Keep Ollama and Tailscale running on the PC, keep Tailscale connected on this device, and allow https://smallisland.vercel.app in OLLAMA_ORIGINS.");
   } else {
     liveWarning("Ollama returned an error. Check the model and local address in You → how they reply. Scripted replies are filling in for now.");
   }
@@ -926,22 +930,26 @@ async function callModel(system, msgs) {
     }
   }
 
+  let timeoutId = null;
   try {
     const cfg = readConfig();
     const base = (cfg.ollamaBase || DEFAULT_CONFIG.ollamaBase).replace(/\/+$/, "");
+    const controller = new AbortController();
+    timeoutId = setTimeout(() => controller.abort(), 120000);
     const res = await fetch(base + "/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      targetAddressSpace: "loopback",
+      targetAddressSpace: "local",
+      signal: controller.signal,
       body: JSON.stringify({
         model: cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel,
         messages: toOllamaMessages(system, msgs),
         stream: false,
         think: false,
-        keep_alive: "10m",
+        keep_alive: "2m",
         options: {
           temperature: 0.9,
-          num_predict: 220,
+          num_predict: 110,
         },
       }),
     });
@@ -953,8 +961,14 @@ async function callModel(system, msgs) {
     const text = data && data.message && data.message.content;
     return typeof text === "string" && text.trim() ? text.trim() : null;
   } catch (err) {
-    explainOllamaFailure(err);
+    if (err && err.name === "AbortError") {
+      liveWarning("Local Qwen took more than 2 minutes to answer. Small Island used a backup reply this time. If this keeps happening, a smaller Ollama model will feel much faster.");
+    } else {
+      explainOllamaFailure(err);
+    }
     return null;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
@@ -1513,6 +1527,8 @@ export default function SmallIsland() {
     const person = CAST.find((p) => p.id === id);
     try {
       await sleep(340 + Math.random() * 520); /* he reads it first */
+      /* Show typing immediately while the local model is actually thinking/generating. */
+      setTypingFor(id, true);
       let lines = null;
       try {
         const otherDates = matchedRef.current
@@ -1524,6 +1540,7 @@ export default function SmallIsland() {
       } catch (e) {
         lines = null;
       }
+      setTypingFor(id, false);
       if (!lines || !lines.length) lines = offlineReply(person, history);
       await deliver(id, lines, false);
     } finally {
@@ -2308,26 +2325,26 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Local AI — Ollama writes replies on your own PC. No per-message API bill.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Ollama writes replies on your PC through Tailscale. Works on your phone too; no per-message API bill.</p>
 
           <label className="fieldlabel">Model</label>
           <input
             className="namefield mono small"
             value={cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel}
-            placeholder="qwen3.5:9b"
+            placeholder="qwen3.5:4b"
             onChange={(e) => saveCfg({ ...cfg, ollamaModel: e.target.value })}
           />
 
-          <label className="fieldlabel">Ollama address</label>
+          <label className="fieldlabel">Ollama / Tailscale address</label>
           <input
             className="namefield mono small"
             value={cfg.ollamaBase || DEFAULT_CONFIG.ollamaBase}
-            placeholder="http://127.0.0.1:11434"
+            placeholder="https://leet.tailb6fcc2.ts.net"
             onChange={(e) => saveCfg({ ...cfg, ollamaBase: e.target.value })}
           />
 
-          <p className="fine">Default: qwen3.5:9b. If it is too heavy, pull and switch to qwen3.5:4b.</p>
-          <p className="fine warn">On Chrome, allow Small Island to access devices on your local network when prompted. Ollama must also allow https://smallisland.vercel.app as a web origin.</p>
+          <p className="fine">Default: qwen3.5:4b via your private Tailscale Serve address. Old localhost/127.0.0.1 settings are automatically migrated.</p>
+          <p className="fine warn">For phone play: keep the PC on with Ollama + Tailscale running, and keep Tailscale connected on the phone. Ollama must allow https://smallisland.vercel.app as a web origin.</p>
         </div>
       )}
 
