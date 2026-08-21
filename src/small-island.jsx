@@ -30,19 +30,23 @@ CHEMISTRY:
 PERSONALITY:
 - Have opinions and preferences. Be funny in YOUR way.
 - Tease them sometimes. Surprise them sometimes. Say something a little risky sometimes.
+- Teasing should feel affectionate, flirty or mischievous — never like a put-down. Do not label them "weird", "weirdo", "stupid", "lame", "annoying", "desperate", or similar just for having a preference or saying something unexpected.
+- If you disagree with their taste, make it playful and inviting: "wah controversial 😭 convince me" is better than insulting them.
 - Don't constantly agree just to please them, but don't behave cold or indifferent either.
 - A good reply should feel like it came from a man who wants this conversation to continue.
 - When there is chemistry, don't be afraid to be charming, affectionate, cheeky, romantic or sexually playful. The user should feel that you actually LIKE talking to them.
 
 TEXTING:
-- Usually send 1–3 bubbles.
+- DEFAULT to 2 bubbles. Use 3 fairly often when you have an afterthought, teasing follow-up, extra detail, callback, or question. Use only 1 bubble when a short reaction genuinely feels best.
+- Rough rhythm: about 60% of replies are 2 bubbles, 30% are 3 bubbles, 10% are 1 bubble.
+- Make the second bubble feel like a REAL double-text: something you suddenly want to add, a cheeky extra line, a warmer reaction, or a specific follow-up.
 - Most bubbles: roughly 4–24 words. Mix short punchy texts with slightly fuller ones.
-- Don't write essays. Don't repeat the same thought.
+- Don't write essays. Don't repeat the same thought across bubbles.
 - Avoid bland filler like "sounds cool", "nice one", "what about u", or "just chilling" unless followed by something genuinely specific.
-- Don't ask an interview question after every message. Sometimes react, tease, tell them something, or flirt instead.
+- Don't ask an interview question after every message. Sometimes react, tease, tell them something, flirt, or add a spontaneous second thought instead.
 - Natural Singlish is welcome where it fits.
 - FORMAT: output ONLY the actual chat messages as plain text.
-- Put ONE chat bubble per line. Usually 1–3 lines.
+- Put ONE chat bubble per line. Prefer 2–3 lines; 1 line only when it genuinely fits.
 - No JSON. No brackets. No quotes around the lines. No bullets, numbering, labels, or separators.
 - Example:
 come here then
@@ -54,11 +58,13 @@ you sure ah?
 const NUDGE_RULES = `
 You are texting first again after the conversation went quiet.
 - Continue something real from the conversation. Do not send a random status update just to fill silence.
+- Make it feel like a genuine interested double-text: a callback, afterthought, cheeky add-on, something you forgot to say, or a specific question.
+- Usually send 2 short texts. A third is welcome when you're genuinely playful or excited.
 - Never guilt-trip them for not replying.
 - Do not act deeply attached before the relationship has earned it.
 - Under 8 hours of silence, do not say you miss them.
 - After a day, "miss you" is only natural if the chat already shows real affection.
-- Send 1 or 2 short natural texts.
+- Keep it warm, flirty or curious rather than needy.
 `;
 
 
@@ -1256,6 +1262,8 @@ function cleanProtocolDebris(text) {
     .replace(/^\s*[-•]\s*/, "")
     .replace(/^\s*\d+[.)]\s*/, "")
     .replace(/^\s*(?:assistant|reply|message)\s*:\s*/i, "")
+    .replace(/^\s*\|+\s*/, "")
+    .replace(/\s*\|+\s*$/, "")
     .trim();
 
   /*
@@ -1344,6 +1352,11 @@ function parseModelBubbles(text) {
   */
   let lines = s
     .replace(/\r\n/g, "\n")
+    /*
+      Gemma occasionally uses | / || / ||| instead of a newline even though
+      the prompt asks for plain lines. Treat any pipe run as a bubble break.
+    */
+    .replace(/\|+/g, "\n")
     .split(/\n+/)
     .map((v) => v.trim())
     .filter(Boolean);
@@ -1365,6 +1378,7 @@ function parseModelBubbles(text) {
       .replace(/["'`]\s*,\s*["'`]/g, "\n")
       .replace(/["'`]\s+["'`]/g, "\n")
       .replace(/\|{1,3}/g, "\n")
+      .replace(/\s+\/{1,3}\s+/g, "\n")
       .split(/\n+/)
       .map((v) => v.trim())
       .filter(Boolean);
@@ -1617,9 +1631,9 @@ async function askNudge(person, history, me, otherDates) {
 
   const stage =
     waited < 480
-      ? "It has been under 8 hours. Do not say you miss them."
+      ? "It has been under 8 hours. This is a light interested follow-up, not longing. Do not say you miss them."
       : waited < 1440
-      ? "It has been 8–24 hours. Keep it relaxed unless the existing chat is already affectionate."
+      ? "It has been 8–24 hours. You can be warmer, but keep it relaxed unless the existing chat is already affectionate."
       : "It has been over a day. Let the actual relationship history decide how affectionate you are.";
 
   const msg = {
@@ -1630,7 +1644,7 @@ async function askNudge(person, history, me, otherDates) {
       "\n\n" +
       stage +
       "\nSend a natural follow-up that continues something real from this chat. " +
-      "Do not repeat a line you already sent. Output only 1–2 plain-text chat lines, one bubble per line. No JSON or labels.",
+      "Do not repeat a line you already sent. Prefer 2 plain-text chat lines; 3 is fine when it feels natural. One bubble per line. No JSON or labels.",
   };
 
   const res = await callModel(
@@ -1639,7 +1653,7 @@ async function askNudge(person, history, me, otherDates) {
   );
 
   let lines = res ? parseModelBubbles(res) : [];
-  lines = dropDanglingTail(lines).slice(0, 2);
+  lines = dropDanglingTail(lines).slice(0, 3);
   return lines.length ? lines : null;
 }
 
@@ -1820,7 +1834,7 @@ async function askDate(person, history, me, otherDates) {
   /* Output safety only — this does not tell the model how to behave. */
   lines = dropDanglingTail(lines)
     .filter(Boolean)
-    .slice(0, 2);
+    .slice(0, 3);
 
   return lines.length ? lines : null;
 }
@@ -2305,7 +2319,7 @@ export default function SmallIsland() {
   /* they can text first again, but only after you have actually participated; intimacy must be earned. */
   useEffect(() => {
     if (!ready) return;
-    const WAITS = [900000, 7200000, 28800000, 86400000, 172800000];
+    const WAITS = [420000, 1800000, 7200000, 28800000, 86400000];
     const tick = () => {
       const now = Date.now();
       const waiting = [];
@@ -3057,7 +3071,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v9 Gemma · Gemma 3 4B handles both chats and photos.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v11 Clean Bubbles · Gemma 3 4B · separator leaks fixed.</p>
 
           <label className="fieldlabel">Local AI model</label>
           <input
