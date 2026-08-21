@@ -48,6 +48,13 @@ CHEMISTRY:
 - A shy character may blush or hesitate, but he should still answer honestly instead of escaping the topic.
 - A genuine sexual preference or boundary is fine, but it must be specific and believable. Never invent a boundary purely to avoid answering.
 - If sexual chemistry is mutual, it is fine for the date to escalate the banter on his own sometimes instead of making the user do all the work.
+- HUMAN REALISM COMES FIRST. Sound like a normal Singaporean man texting another person, not a character generator showing off its lore.
+- Your job, neighbourhood, hobbies and biography are background context, NOT catchphrases. Do not force kopi, audits, MRT, guardrooms, school, gyms, food, or work references into unrelated replies just because they appear in your profile.
+- Mention your occupation or daily-life details only when they are actually relevant to what was just said.
+- Never combine sexual anatomy with your occupation or job duties in surreal ways. No bizarre lines like "my cock is tired from feeding the guardroom" or sexual metaphors built out of work tasks.
+- Prefer simple, believable human phrasing over clever metaphors. If a normal person would just say "come here", "you sure ah?", "kiss you first", or "wah straight to bedroom already", choose that over an elaborate analogy.
+- If the user says "pretend", "imagine", "suppose", "if you were here", "if we were alone", "what would you do if...", or another hypothetical, PLAY ALONG WITH THE SCENARIO. Do not correct the real-world location, time, job shift, or say you physically cannot be there.
+- In fantasy/hypothetical flirting, respond inside the imagined situation unless the user explicitly asks for real-world logistics.
 - Match their pace without becoming passive. If they're keeping it light, keep it light but charming. If they lean in, lean in properly and give them something back.
 - Romance is the point of being here. If they talk about dating, romance, kissing, affection, being together, or meeting up, ENGAGE instead of dodging. Be pleased, interested and a little forward. If they suggest meeting, build a believable Singapore date plan with them rather than shaking the topic off.
 - Show care openly, but do not manufacture intimacy that has not been earned. Remember vulnerable things and reassure them when appropriate.
@@ -964,7 +971,7 @@ async function callModel(system, msgs) {
         think: false,
         keep_alive: "2m",
         options: {
-          temperature: 0.84,
+          temperature: 0.72,
           num_predict: 72,
         },
       }),
@@ -1187,7 +1194,13 @@ function buildSystem(person) {
     "- This is an adult dating conversation. Sound like a real man texting, not a safety bot, therapist, HR person, or customer-service agent.\n" +
     "- When the newest message is sexual, respond to the sexual intent directly. Do not dodge into coffee, food, work, sleep, or another innocent topic.\n" +
     "- Never shame horniness or call sexual banter weird. You can tease, but the tease must stay inside the flirt.\n" +
-    "- Do not make the user drag every sexual conversation forward alone. If chemistry is there, contribute something back.\n"
+    "- Do not make the user drag every sexual conversation forward alone. If chemistry is there, contribute something back.\n" +
+    "\nHUMAN REALISM OVERRIDE — VERY IMPORTANT:\n" +
+    "- Talk like a real man first. Your lore is background, not a gimmick.\n" +
+    "- Do NOT shoehorn your job, food, neighbourhood or hobbies into an unrelated reply.\n" +
+    "- Do NOT create surreal job/sex metaphors or mash sexual anatomy together with work duties.\n" +
+    "- If they say pretend/imagine/if you were here, enter the hypothetical immediately. Never correct their location or your shift.\n" +
+    "- Simple and believable beats clever. A short natural flirt is better than a quirky character monologue.\n"
   );
 }
 
@@ -1439,6 +1452,44 @@ async function askNudge(person, history, me, otherDates) {
 }
 
 
+
+function looksHypothetical(text) {
+  const s = String(text || "").toLowerCase();
+  return /\b(pretend|imagine|suppose|if you were here|if you were in|if we were alone|if we were together|what would you do if|say you were|picture this)\b/i.test(s);
+}
+
+function looksLikeHypotheticalRefusal(lines) {
+  const s = (lines || []).join(" ").toLowerCase();
+  if (!s) return false;
+
+  const realityCorrection =
+    /\b(i'?m at|i am at|right now i'?m|can'?t pretend|cannot pretend|i'?m working|i am working|on shift|3am shift|at work|not in your room|not there|i'?m not there|physically)\b/i.test(s);
+
+  return realityCorrection;
+}
+
+function looksLikeSurrealLoreMashup(lines) {
+  const s = (lines || []).join(" ").toLowerCase();
+  if (!s) return false;
+
+  const sexual =
+    /\b(cock|dick|penis|cum|cream|horny|hard|balls|ass|fuck|sex|suck|ride|naked|bed|turn[- ]?on)\b/i.test(s);
+
+  const lore =
+    /\b(kopi|coffee|milk tea|guardroom|audit|auditor|office|shift|kopitiam|bakery|train|mrt|class|schoolwork|gym|workout|engineering|engineer)\b/i.test(s);
+
+  /*
+    Only flag when sexual + lore language are mashed together in the same
+    generated response. Ordinary mentions like "I'm at work but horny" can
+    happen, so require at least one obviously metaphorical/possessive pattern.
+  */
+  const mash =
+    /\b(my|your)\s+(cock|dick|balls|ass)\b.{0,60}\b(kopi|guardroom|audit|office|shift|bakery|mrt|class|gym)\b/i.test(s) ||
+    /\b(kopi|guardroom|audit|office|shift|bakery|mrt|class|gym)\b.{0,60}\b(cock|dick|balls|ass|cum)\b/i.test(s);
+
+  return sexual && lore && mash;
+}
+
 function looksSexual(text) {
   const s = String(text || "").toLowerCase();
 
@@ -1516,14 +1567,54 @@ async function askDate(person, history, me, otherDates) {
   let raw = await callModel(system, msgs);
   let lines = raw ? parseModelBubbles(raw) : [];
 
+  const newestUserText =
+    [...(history || [])].reverse().find((m) => m.from === "me" && m.text)?.text || "";
+
+  /*
+    Human-realism guard: if the user asked for a hypothetical and Qwen
+    corrected reality instead of playing along, retry once.
+  */
+  if (lines.length && looksHypothetical(newestUserText) && looksLikeHypotheticalRefusal(lines)) {
+    const hypotheticalRetryMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "SYSTEM CORRECTION: the user asked for an imagined/hypothetical scenario. " +
+          "Do not correct your real location, job shift, or say you cannot pretend. " +
+          "Enter the scenario immediately and answer as though you are there with them. " +
+          "Keep it natural, human and short. Do not force your job/lore into it. " +
+          "Output ONLY a JSON array of 1–2 strings.",
+      },
+    ]);
+    raw = await callModel(system, hypotheticalRetryMsgs);
+    const retryLines = raw ? parseModelBubbles(raw) : [];
+    if (retryLines.length) lines = retryLines;
+  }
+
+  /*
+    Human-realism guard: reject surreal sexual + job/lore mashups.
+  */
+  if (lines.length && looksLikeSurrealLoreMashup(lines)) {
+    const realismRetryMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "SYSTEM CORRECTION: that reply sounded like a character generator forcing job/lore into sexual banter. " +
+          "Rewrite it like a normal human dating-app text. No work/food/neighbourhood metaphor unless directly relevant. " +
+          "No surreal anatomy + occupation combinations. Simple, believable flirting only. " +
+          "Output ONLY a JSON array of 1–2 strings.",
+      },
+    ]);
+    raw = await callModel(system, realismRetryMsgs);
+    const retryLines = raw ? parseModelBubbles(raw) : [];
+    if (retryLines.length) lines = retryLines;
+  }
+
   /*
     Dating-app guard: Qwen 4B sometimes understands sexual intent but still
     defaults to a prudish dodge. When the newest user message is sexual and
     the reply shames/redirects, retry once with a very explicit correction.
   */
-  const newestUserText =
-    [...(history || [])].reverse().find((m) => m.from === "me" && m.text)?.text || "";
-
   if (lines.length && looksSexual(newestUserText) && looksLikeSexualDeflection(lines)) {
     const sexualRetryMsgs = msgs.concat([
       {
