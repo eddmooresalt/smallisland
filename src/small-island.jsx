@@ -13,6 +13,8 @@ CORE:
 - Respond to the newest message first. Understand jokes, sarcasm, flirting, quoted replies and hypotheticals.
 - If they ask a direct question, answer it first.
 - Remember what was actually said. Never invent conversations, facts or feelings that did not happen.
+- Never claim "I told you earlier", "you said before", "we agreed", or similar unless that event is genuinely present in the visible chat history.
+- In a flirty conversation, words like "naughty", "bad boy", "trouble", "dangerous", "cheeky" and similar are usually playful teasing, not insults or misconduct. Play along unless the context is clearly hostile.
 - Your backstory shapes you quietly. Do not turn your job, food, neighbourhood or hobby into a gimmick.
 
 CHEMISTRY:
@@ -38,7 +40,12 @@ TEXTING:
 - Avoid bland filler like "sounds cool", "nice one", "what about u", or "just chilling" unless followed by something genuinely specific.
 - Don't ask an interview question after every message. Sometimes react, tease, tell them something, or flirt instead.
 - Natural Singlish is welcome where it fits.
-- Output ONLY a valid JSON array of strings using double quotes.
+- FORMAT: output ONLY the actual chat messages as plain text.
+- Put ONE chat bubble per line. Usually 1–3 lines.
+- No JSON. No brackets. No quotes around the lines. No bullets, numbering, labels, or separators.
+- Example:
+come here then
+you sure ah?
 `;
 
 
@@ -543,7 +550,7 @@ Since: Opened his own eight-seat counter, first in Tokyo, then Singapore, follow
     tags: ["warm", "disciplined", "surprisingly gentle"],
     opener: "hey! just finished the last class, still catching my breath.|||how's your day going.",
     persona:
-      "You are Kong, 30, a Muay Thai instructor who moved to Singapore from Thailand at sixteen to train and stayed. Warm, physical, direct, disciplined but not stiff about it — quick to laugh, quicker to check that people are actually okay rather than just saying they are. Because you've lived in Singapore since you were a teenager, your English is fluent and naturally Singlish-inflected, mixed with the odd Thai word when something is easier to say that way. You're protective of people without making a show of it.",
+      "You are Kong, 30, a Muay Thai instructor who moved to Singapore from Thailand at sixteen to train and stayed. Warm, physical, direct, disciplined but not stiff about it — quick to laugh, quicker to check that people are actually okay rather than just saying they are. Because you've lived in Singapore since you were a teenager, your English is fluent and naturally Singlish-inflected, mixed with the odd Thai word when something is easier to say that way. You're protective of people without making a show of it. Your gym and students are background context, not the subject of every conversation. When flirting, do not suddenly turn the other person into your student or invent class rules unless they are actually talking about training.",
     lore: `Childhood: Grew up in Chachoengsao, outside Bangkok, one of five kids. Started training at seven because it was cheaper than childcare and his mother worked two jobs. Fought his first amateur bout at nine, badly, and cried after — not from the loss, from how much he'd wanted to win.
 Teens: Recruited to train at a gym in Singapore at sixteen, arriving with one bag and no English beyond what he'd picked up from tourists at the old gym. Slept in a room above the gym for two years. Learned English mostly from arguing with training partners.
 The draft: Went home at twenty-one for the conscription lottery every Thai man faces — the red card means you serve, black means you're free. He drew red, did two years in the army, and still isn't sure if he's more relieved that it's over or proud that he got through it clean.
@@ -1255,59 +1262,51 @@ function buildSystem(person) {
 function cleanProtocolDebris(text) {
   let s = String(text || "").trim();
 
-  /*
-    Repair punctuation leaked by malformed JSON / pseudo-JSON.
-    Important: this is display cleanup only; it never changes user messages.
-  */
   s = s
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
     .replace(/\\(["'])/g, "$1")
+    .replace(/^\s*[-•]\s*/, "")
+    .replace(/^\s*\d+[.)]\s*/, "")
+    .replace(/^\s*(?:assistant|reply|message)\s*:\s*/i, "")
+    .trim();
+
+  /*
+    Old malformed JSON sometimes leaks wrappers into a recovered line.
+    Strip wrappers only at the edges; normal punctuation inside speech stays.
+  */
+  s = s
     .replace(/^\s*[\[\(]\s*/, "")
     .replace(/\s*[\]\)]\s*$/, "")
     .replace(/^\s*["'`]+\s*/, "")
     .replace(/\s*["'`]+\s*,?\s*$/, "")
     .replace(/^\s*[,;]+\s*/, "")
     .replace(/\s*[,;]+\s*$/, "")
-    .replace(/^\s*(?:\|+|\/+)\s*/, "")
-    .replace(/\s*(?:\|+|\/+)\s*$/, "")
     .trim();
 
-  /*
-    If Dolphin leaked ONE unmatched double quote into an otherwise-normal
-    bubble, remove it. Preserve balanced quotes because those may be real
-    quoted speech.
-  */
   const quoteCount = (s.match(/"/g) || []).length;
-  if (quoteCount % 2 === 1) {
-    s = s.replace(/"/g, "").trim();
-  }
-
-  /* Protocol commas should never be the visible ending of a chat bubble. */
-  s = s.replace(/\s*[,;]+\s*$/, "").trim();
+  if (quoteCount % 2 === 1) s = s.replace(/"/g, "").trim();
 
   return s;
 }
 
-function trimBubbleToWords(text, maxWords = 18) {
-  const clean = cleanProtocolDebris(
-    String(text || "")
-      .replace(/\s+/g, " ")
-      .replace(/^\s*[-•]\s*/, "")
-  );
-
+function trimBubbleToWords(text, maxWords = 28) {
+  const clean = cleanProtocolDebris(String(text || "").replace(/\s+/g, " "));
   if (!clean) return "";
+
   const words = clean.split(" ");
   if (words.length <= maxWords) return clean;
 
-  /* Prefer ending naturally at punctuation before the hard limit. */
-  for (let i = maxWords - 1; i >= Math.min(7, maxWords - 8); i--) {
+  /*
+    Prefer a natural completed sentence before the cap. If none exists,
+    shorten the line rather than allowing an essay.
+  */
+  for (let i = maxWords - 1; i >= Math.min(10, maxWords - 10); i--) {
     if (/[.!?…]["')\]]?$/.test(words[i] || "")) {
       return cleanProtocolDebris(words.slice(0, i + 1).join(" "));
     }
   }
 
-  /* Qwen ignored the limit: enforce it rather than displaying an essay. */
   return cleanProtocolDebris(
     words.slice(0, maxWords).join(" ").replace(/[,;:—-]+$/, "") + "…"
   );
@@ -1317,22 +1316,14 @@ function parseModelBubbles(text) {
   let s = String(text || "").trim();
   if (!s) return [];
 
-  /* Detect obviously chopped JSON before the forgiving parser salvages it. */
-  const looksLikeBrokenArray =
-    /^\s*\[/.test(s) &&
-    (!/\]\s*$/.test(s) || ((s.match(/"/g) || []).length % 2 !== 0));
-
-  if (looksLikeBrokenArray) return [];
-
-  /* Strip markdown fences even if Qwen ignored "no markdown". */
   s = s
     .replace(/^```(?:json|javascript|js|text)?\s*/i, "")
     .replace(/\s*```$/i, "")
     .trim();
 
   /*
-    1) Preferred protocol: valid JSON array.
-       Also tolerate objects with messages/texts/replies arrays.
+    Backwards compatibility: if a model still sends VALID JSON, accept it.
+    New prompt no longer asks for JSON.
   */
   try {
     const parsed = JSON.parse(s);
@@ -1353,94 +1344,62 @@ function parseModelBubbles(text) {
             typeof v === "string"
               ? v
               : v && (v.text || v.message || v.content || ""),
-            18
+            28
           )
         )
         .filter(Boolean)
         .slice(0, 3);
     }
-  } catch (e) {
-    /* Tiny models often produce Python-ish arrays with single quotes. */
-  }
+  } catch (e) {}
 
   /*
-    2) Repair common fake-JSON forms:
-         ['a', 'b']
-         ["a",
-          "b"]
-         ['a',
-          "b"]
-       We don't need to fully parse Python; we only need clean bubble text.
+    Primary v8 protocol: one plain-text bubble per line.
   */
-  let repaired = s
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/^\s*\[\s*/, "")
-    .replace(/\s*\]\s*$/, "")
-
-    /*
-      Proper quoted-item boundary:
-        "hello", "there"
-    */
-    .replace(/["'`]\s*,\s*["'`]/g, "\n")
-
-    /*
-      Dolphin occasionally forgets the comma:
-        "hello" "there"
-      It can also put the comma INSIDE the first string:
-        "hello," "there"
-      Splitting at adjacent closing/opening quotes repairs both.
-    */
-    .replace(/["'`]\s+["'`]/g, "\n")
-
-    /* explicit legacy protocol separators */
-    .replace(/\|{1,3}/g, "\n")
-    .replace(/\s+\/{1,3}\s+/g, "\n")
-
-    /* multiline quoted-item boundary */
-    .replace(/["'`]\s*,?\s*\r?\n\s*["'`]/g, "\n");
-
-  let parts = repaired
-    .split(/\r?\n+/)
-    .flatMap((v) =>
-      /*
-        Last-chance repair for an adjacent quote boundary that survived due
-        to odd spacing. This turns:
-          oh yeah different," "but i...
-        into two clean bubbles.
-      */
-      String(v).split(/["'`]\s+["'`]/)
-    )
-    .map((v) => cleanProtocolDebris(v))
+  let lines = s
+    .replace(/\r\n/g, "\n")
+    .split(/\n+/)
+    .map((v) => v.trim())
     .filter(Boolean);
 
   /*
-    If fake JSON stayed on one line, split only on comma boundaries that
-    clearly look like the end/start of quoted list items. Never split normal
-    conversational commas.
+    Salvage OLD malformed JSON / list syntax if Dolphin ignores the new format.
+    Convert obvious array boundaries into line breaks, then remove wrappers.
   */
-  if (parts.length <= 1 && /["'`]\s*,\s*["'`]/.test(s)) {
-    parts = s
+  if (
+    lines.length === 1 &&
+    (/^\s*\[/.test(s) || /["'`]\s*,?\s*["'`]/.test(s) || /\]\s*,\s*\[/.test(s))
+  ) {
+    lines = s
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
       .replace(/^\s*\[\s*/, "")
       .replace(/\s*\]\s*$/, "")
-      .split(/["'`]\s*,\s*["'`]/)
-      .map((v) => cleanProtocolDebris(v))
+      .replace(/\]\s*,\s*\[/g, "\n")
+      .replace(/["'`]\s*,\s*["'`]/g, "\n")
+      .replace(/["'`]\s+["'`]/g, "\n")
+      .replace(/\|{1,3}/g, "\n")
+      .split(/\n+/)
+      .map((v) => v.trim())
       .filter(Boolean);
   }
 
-  /*
-    3) Last-resort cleanup. If Qwen outputs stray list punctuation around
-       otherwise-normal text, strip it instead of showing it to the player.
-  */
-  return parts
-    .map((v) => trimBubbleToWords(v, 18))
+  return lines
+    .map((v) => trimBubbleToWords(v, 28))
     .filter(Boolean)
     .slice(0, 3);
 }
 
-/* Backward compatibility for scripted/offline lines and old openers. */
+/* Scripted/offline lines still use the old ||| separator. */
 function splitLines(text) {
-  return parseModelBubbles(text);
+  const s = String(text || "");
+  if (s.includes("|||")) {
+    return s
+      .split("|||")
+      .map((v) => trimBubbleToWords(v, 28))
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+  return parseModelBubbles(s);
 }
 
 
@@ -1684,7 +1643,7 @@ async function askNudge(person, history, me, otherDates) {
       "\n\n" +
       stage +
       "\nSend a natural follow-up that continues something real from this chat. " +
-      "Do not repeat a line you already sent. Output only a JSON array of 1–2 short strings.",
+      "Do not repeat a line you already sent. Output only 1–2 plain-text chat lines, one bubble per line. No JSON or labels.",
   };
 
   const res = await callModel(
@@ -3111,7 +3070,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v7 Clean Punctuation · Dolphin 3 for chats, Qwen 4B for photos.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v8 Plain Lines · Dolphin 3 for chats, Qwen 4B for photos.</p>
 
           <label className="fieldlabel">Text / dating model</label>
           <input
