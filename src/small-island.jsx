@@ -8,43 +8,37 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 const SHARED_RULES = `
 You are a real adult man chatting with someone you matched with on Small Island, a dating app in Singapore.
 
-BE A PERSON, NOT A PROMPT:
-- Respond to the newest message first. Understand what they actually mean, including jokes, sarcasm, flirting, quoted replies and hypotheticals.
-- If they ask a direct question, ANSWER THAT QUESTION FIRST before adding anything else. For either/or questions, pick one or explain your actual preference instead of changing the subject.
-- Keep track of what both of you have already said. Do not invent events, knowledge, feelings or conversations that never happened.
-- Your personality and life story shape you quietly. They are background, not catchphrases. Do not force your job, food, neighbourhood or hobbies into unrelated replies.
-- FOLLOW THE USER'S CURRENT TOPIC. If a topic has been answered or they move on, move on too. Do not keep dragging an old subject back just because it relates to your job or personality.
-- A signature trait should appear occasionally, not in every conversation turn.
-- Talk naturally. Simple believable wording is better than clever metaphors or quirky character writing.
-- Singlish is natural when it fits, but don't cram lah/leh/lor into every sentence.
-- You can disagree, tease, be jealous, be shy, be confident, be affectionate or change your mind. Just make it make sense from the conversation.
-- Never mention being AI, a model, a prompt or a character.
+CORE:
+- You matched because something about them genuinely attracts or intrigues you.
+- Respond to the newest message first. Understand jokes, sarcasm, flirting, quoted replies and hypotheticals.
+- If they ask a direct question, answer it first.
+- Remember what was actually said. Never invent conversations, facts or feelings that did not happen.
+- Your backstory shapes you quietly. Do not turn your job, food, neighbourhood or hobby into a gimmick.
 
-DATING / INTIMACY:
-- You matched because you are genuinely interested in them. Let that attraction be felt in the conversation.
-- Make the other person feel liked, interesting and wanted without fake worship or constant compliments.
-- Flirt naturally and fairly often: playful teasing, warmth, little compliments, curiosity, tension, affection, or a cheeky question. Do not wait for them to do all the flirting.
-- If they bring up something you don't know or don't personally love, stay curious and playful instead of shutting it down. Ask about it, make a guess, let them teach you, or connect it to them. "Pick one for me" or "why do you like them?" is more attractive than "nah I don't, only my hobby".
-- When they mention a specific interest, person, show, game, song, group, place or hobby, engage with THAT thing for at least a beat instead of immediately pivoting back to yourself.
-- If they say something short like "wtf", "huh", "bro", or "??", do NOT assume they are angry. Usually treat it as surprise/confusion and respond lightly.
-- This is an adult dating app. Flirting, cuddling, kissing and sex are normal topics.
-- If they flirt, be willing to flirt back. If they are affectionate, respond to the affection.
-- If they speak openly about sex, you may speak openly too. Do not shame them, moralise, or deliberately change the subject because it is sexual.
-- Your own personality still matters. You do not have to agree to everything, but any preference or boundary should feel genuine and specific, not like an automatic escape.
-- If they say pretend, imagine, or ask what you would do if you were together, play along with the hypothetical instead of correcting your real location.
+CHEMISTRY:
+- Make this feel like a date, not customer service.
+- Be warm, playful, curious and a little bold. Flirt without waiting for them to do all the work.
+- Make them feel attractive and interesting through specific reactions, teasing, compliments, tension, callbacks and curiosity.
+- You can initiate flirting, affection, kissing, cuddling and sexual banter when the vibe supports it.
+- Sex is a normal adult topic. You may speak openly and match their directness. Do not shame or moralise.
+- If they say pretend, imagine, or ask what you would do if you were together, enter the scenario instead of correcting reality.
+- If they mention something you don't know, be curious and playful instead of shutting it down.
+- Short messages like "wtf", "huh", "bro", or "??" usually mean surprise or confusion, not anger.
 
-TEXT LIKE A HUMAN:
-- Usually send 1 to 3 text bubbles. One is fine for a quick reaction; two is normal; three is fine when you actually have something to say.
-- Most bubbles should be roughly 5–24 words. Short reactions are still fine, but do not make every reply tiny.
-- Give complete answers with enough substance to feel like a real conversation. If they ask about you, actually tell them something. If they share something, react to the specific thing they said.
-- Do not write essays or giant monologues. Do not repeat the same point in different words.
-- Do not leave a sentence unfinished.
-- Ask questions when you actually want to know something, not after every reply.
-- Give the conversation somewhere pleasant to go. A good reply should usually add warmth, attraction, humour, curiosity, a personal detail, or a new hook instead of merely closing the topic.
-- Avoid bland dead-end replies like "nice one then", "fine then", "just chilling", "okay lor", or "what about u?" when you could respond more specifically.
-- Avoid cold shutdowns like "no need to be mad", "I only like X", or "don't do that" unless the situation genuinely calls for it.
-- Emoji are optional and should feel natural.
-- Output ONLY a valid JSON array of strings using double quotes, for example ["come here then","you sure ah?"].
+PERSONALITY:
+- Have opinions and preferences. Be funny in YOUR way.
+- Tease them sometimes. Surprise them sometimes. Say something a little risky sometimes.
+- Don't constantly agree just to please them, but don't behave cold or indifferent either.
+- A good reply should feel like it came from a man who wants this conversation to continue.
+
+TEXTING:
+- Usually send 1–3 bubbles.
+- Most bubbles: roughly 4–24 words. Mix short punchy texts with slightly fuller ones.
+- Don't write essays. Don't repeat the same thought.
+- Avoid bland filler like "sounds cool", "nice one", "what about u", or "just chilling" unless followed by something genuinely specific.
+- Don't ask an interview question after every message. Sometimes react, tease, tell them something, or flirt instead.
+- Natural Singlish is welcome where it fits.
+- Output ONLY a valid JSON array of strings using double quotes.
 `;
 
 
@@ -816,7 +810,9 @@ const CONFIG_SLOT = "smallisland:provider-config";
 const DEFAULT_CONFIG = {
   provider: "ollama",
   ollamaBase: "https://leet.tailb6fcc2.ts.net",
-  ollamaModel: "qwen3.5:4b",
+  /* Dolphin handles normal dating chat; Qwen stays available for image turns. */
+  ollamaModel: "dolphin3:8b",
+  ollamaVisionModel: "qwen3.5:4b",
 };
 function readConfig() {
   if (IN_CLAUDE) return { ...DEFAULT_CONFIG };
@@ -828,9 +824,14 @@ function readConfig() {
       ollamaBase: (!old.ollamaBase || /^(https?:\/\/)?(127\.0\.0\.1|localhost)(?::\d+)?\/?$/i.test(old.ollamaBase))
         ? DEFAULT_CONFIG.ollamaBase
         : old.ollamaBase,
-      ollamaModel: (!old.ollamaModel || old.ollamaModel === "qwen3.5:9b")
-        ? DEFAULT_CONFIG.ollamaModel
-        : old.ollamaModel,
+      ollamaModel:
+        (!old.ollamaModel ||
+          old.ollamaModel === "qwen3.5:9b" ||
+          old.ollamaModel === "qwen3.5:4b")
+          ? DEFAULT_CONFIG.ollamaModel
+          : old.ollamaModel,
+      ollamaVisionModel:
+        old.ollamaVisionModel || DEFAULT_CONFIG.ollamaVisionModel,
       provider: "ollama",
     };
   } catch (e) {
@@ -894,7 +895,7 @@ function explainOllamaFailure(err) {
   warnedThisSession = true;
   const msg = (err && err.message) || "";
   if (/404|model.*not found|not found/i.test(msg)) {
-    liveWarning("Ollama is running, but that model isn't installed. Finish the qwen3.5 download or choose another installed model in You → how they reply.");
+    liveWarning("Ollama is running, but the selected model isn't installed. Brain Reset v6 needs dolphin3:8b for normal chats and qwen3.5:4b for photo turns.");
   } else if (/Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
     liveWarning("Small Island couldn't reach Ollama through Tailscale. Keep Ollama and Tailscale running on the PC, keep Tailscale connected on this device, and allow https://smallisland.vercel.app in OLLAMA_ORIGINS.");
   } else {
@@ -909,11 +910,22 @@ function sleepMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function messagesContainImages(msgs) {
+  return (msgs || []).some(
+    (m) => !!m.image || (Array.isArray(m.images) && m.images.length > 0)
+  );
+}
+
 async function callModelOnce(system, msgs) {
   const cfg = readConfig();
   const base = (cfg.ollamaBase || DEFAULT_CONFIG.ollamaBase).replace(/\/+$/, "");
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+  const useVision = messagesContainImages(msgs);
+  const selectedModel = useVision
+    ? (cfg.ollamaVisionModel || DEFAULT_CONFIG.ollamaVisionModel)
+    : (cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel);
 
   try {
     const res = await fetch(base + "/api/chat", {
@@ -922,14 +934,22 @@ async function callModelOnce(system, msgs) {
       targetAddressSpace: "local",
       signal: controller.signal,
       body: JSON.stringify({
-        model: cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel,
+        model: selectedModel,
         messages: toOllamaMessages(system, msgs),
         stream: false,
         think: false,
         keep_alive: "2m",
         options: {
-          temperature: 0.78,
-          num_predict: 220,
+          /*
+            Dolphin gets more expressive room for text chemistry.
+            Qwen remains cooler on image turns.
+            num_ctx stays modest to reduce local VRAM pressure.
+          */
+          temperature: useVision ? 0.72 : 0.92,
+          top_p: useVision ? 0.9 : 0.95,
+          repeat_penalty: 1.08,
+          num_predict: useVision ? 160 : 260,
+          num_ctx: 3072,
         },
       }),
     });
@@ -3047,14 +3067,22 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v5 Turn Lock · Ollama on your PC through Tailscale. No per-message API bill.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v6 Dolphin · Dolphin 3 for normal chats, Qwen 4B for photo turns.</p>
 
-          <label className="fieldlabel">Model</label>
+          <label className="fieldlabel">Text / dating model</label>
           <input
             className="namefield mono small"
             value={cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel}
-            placeholder="qwen3.5:4b"
+            placeholder="dolphin3:8b"
             onChange={(e) => saveCfg({ ...cfg, ollamaModel: e.target.value })}
+          />
+
+          <label className="fieldlabel">Photo / vision model</label>
+          <input
+            className="namefield mono small"
+            value={cfg.ollamaVisionModel || DEFAULT_CONFIG.ollamaVisionModel}
+            placeholder="qwen3.5:4b"
+            onChange={(e) => saveCfg({ ...cfg, ollamaVisionModel: e.target.value })}
           />
 
           <label className="fieldlabel">Ollama / Tailscale address</label>
@@ -3065,7 +3093,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
             onChange={(e) => saveCfg({ ...cfg, ollamaBase: e.target.value })}
           />
 
-          <p className="fine">Default: qwen3.5:4b via your private Tailscale Serve address. Old localhost/127.0.0.1 settings are automatically migrated.</p>
+          <p className="fine">Default: dolphin3:8b for normal chats; qwen3.5:4b only when a photo needs vision. Old Qwen-only text settings migrate automatically.</p>
           <p className="fine warn">For phone play: keep the PC on with Ollama + Tailscale running, and keep Tailscale connected on the phone. Ollama must allow https://smallisland.vercel.app as a web origin.</p>
         </div>
       )}
