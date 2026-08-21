@@ -972,7 +972,7 @@ async function callModel(system, msgs) {
         keep_alive: "2m",
         options: {
           temperature: 0.72,
-          num_predict: 72,
+          num_predict: 96,
         },
       }),
     });
@@ -1342,6 +1342,45 @@ function splitLines(text) {
   return parseModelBubbles(text);
 }
 
+
+function looksDanglingSentence(text) {
+  const s = String(text || "").trim();
+  if (!s) return false;
+
+  /* Clearly unfinished punctuation. */
+  if (/[,:;—-]$/.test(s)) return true;
+
+  const words = s.toLowerCase().replace(/[.!?…"'`)\]]+$/, "").split(/\s+/);
+  const last = words[words.length - 1] || "";
+
+  /*
+    If generation stops on these glue words, the sentence is almost certainly
+    incomplete. Example: "you sure your cock is as"
+  */
+  const danglingWords = new Set([
+    "as", "and", "but", "or", "because", "although", "though", "if", "when",
+    "while", "than", "that", "which", "who", "whose", "where", "to", "of",
+    "for", "with", "about", "from", "into", "onto", "at", "by", "the", "a",
+    "an", "your", "my", "his", "her", "our", "their", "is", "are", "was",
+    "were", "be", "been", "being", "can", "could", "would", "should", "will"
+  ]);
+
+  return danglingWords.has(last);
+}
+
+function hasDanglingTail(lines) {
+  if (!lines || !lines.length) return false;
+  return looksDanglingSentence(lines[lines.length - 1]);
+}
+
+function dropDanglingTail(lines) {
+  const arr = [...(lines || [])];
+  if (arr.length > 1 && looksDanglingSentence(arr[arr.length - 1])) {
+    arr.pop();
+  }
+  return arr;
+}
+
 function normaliseForRepeat(text) {
   return String(text || "")
     .toLowerCase()
@@ -1571,6 +1610,31 @@ async function askDate(person, history, me, otherDates) {
     [...(history || [])].reverse().find((m) => m.from === "me" && m.text)?.text || "";
 
   /*
+    Completion guard: local 4B can occasionally hit the generation cap in the
+    middle of its final bubble. Never show a visibly unfinished sentence.
+  */
+  if (lines.length && hasDanglingTail(lines)) {
+    const completionRetryMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "SYSTEM CORRECTION: your previous draft ended mid-sentence. " +
+          "Rewrite the whole reply from scratch and FINISH every sentence. " +
+          "Use only 1 or 2 short complete bubbles. Do not add a third bubble. " +
+          "Output ONLY a valid JSON array of strings.",
+      },
+    ]);
+    raw = await callModel(system, completionRetryMsgs);
+    const completionLines = raw ? parseModelBubbles(raw) : [];
+    if (completionLines.length && !hasDanglingTail(completionLines)) {
+      lines = completionLines;
+    } else {
+      /* Better to show two complete texts than one broken third text. */
+      lines = dropDanglingTail(lines);
+    }
+  }
+
+  /*
     Human-realism guard: if the user asked for a hypothetical and Qwen
     corrected reality instead of playing along, retry once.
   */
@@ -1650,6 +1714,7 @@ async function askDate(person, history, me, otherDates) {
   }
 
   lines = removeRepeatedLines(lines, history);
+  lines = dropDanglingTail(lines);
   return lines.length ? lines : null;
 }
 
