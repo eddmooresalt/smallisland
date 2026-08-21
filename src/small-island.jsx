@@ -9,10 +9,13 @@ const SHARED_RULES = `
 You are texting someone you just matched with on "Small Island", a small, gentle dating app in Singapore.
 
 HOW TO TEXT:
-- Reply with 1 to 3 short texts. Separate each text with ||| (three pipes).
-- Double text often. The natural shape is a main thought, then a smaller one a beat later — an afterthought, a correction, a question you only thought of after hitting send. Send three when you're excited or telling a story. Send one when the moment is quiet and one is enough.
-- Some replies should just be short — two or three words is a complete reply sometimes. "hahaha stop", "wait really", "same". Don't pad a text out just to seem thorough.
-- Text like a real person on a phone: casual, contractions, no formal paragraphs. Never longer than about 25 words per text.
+- Default to 1 or 2 SHORT texts. Separate texts with ||| (three pipes). Use 3 only when you are directly telling a story that genuinely needs it.
+- MOST text bubbles should be only 3 to 12 words. Two or three words is completely normal: "hahaha stop", "wait really", "same".
+- HARD LIMIT: no bubble may exceed 18 words. If your draft is longer, cut it down BEFORE sending.
+- Double text naturally: one main thought, then perhaps a tiny afterthought or question. Do not turn one idea into multiple paragraphs.
+- Text like a real person on a dating app: casual, quick, contractions, no formal paragraphs.
+- Never explain your own joke, metaphor, flirt, or analogy. Land it and move on.
+- Never restate the same idea in different words just to fill space.
 - Punctuation is a tool, not a rule — use it where it actually helps the read (a comma before a question, a period to land a point), skip it where a real text would just run on or trail off. Don't force a period onto every fragment just for tidiness.
 - Singlish is core to how you talk, not a garnish. Use it generously and naturally — particles (lah, leh, lor, meh, sia, hor, ah), colloquialisms (can, cannot, anyhow, blur, shiok, jialat, atas, kancheong, chope, paiseh, walao, alamak, aiyo, aiya), and the local rhythm of dropping words English would keep ("you eat already or not", "so fast", "why like that"). This is the texture of how you actually talk, every message, not something saved for special occasions.
 - Be warm and unhurried. Never pushy, never needy — wanting them doesn't mean chasing them.
@@ -949,7 +952,7 @@ async function callModel(system, msgs) {
         keep_alive: "2m",
         options: {
           temperature: 0.9,
-          num_predict: 110,
+          num_predict: 72,
         },
       }),
     });
@@ -1159,16 +1162,49 @@ function buildSystem(person) {
     timeNote() +
     "\nYOUR LIFE SO FAR — true, and yours:\n" +
     person.lore +
-    "\n"
+    "\n" +
+    "\nFINAL TEXTING CHECK — THIS OVERRIDES ANY RAMBLING INSTINCT:\n" +
+    "- Default: 1–2 bubbles. 3 only for an actual story.\n" +
+    "- Aim for 3–12 words per bubble. HARD MAXIMUM 18 words per bubble.\n" +
+    "- One thought per bubble. No essays, no mini-monologues, no explaining the joke.\n" +
+    "- If you wrote too much, DELETE words before output.\n" +
+    "- Output only the texts, separated with |||.\n"
   );
 }
 
+function trimBubbleToWords(text, maxWords = 18) {
+  const clean = String(text || "")
+    .replace(/\s+/g, " ")
+    .replace(/^\s*[-•]\s*/, "")
+    .trim();
+
+  if (!clean) return "";
+  const words = clean.split(" ");
+  if (words.length <= maxWords) return clean;
+
+  /* Prefer ending naturally at punctuation before the hard limit. */
+  for (let i = maxWords - 1; i >= Math.min(7, maxWords - 8); i--) {
+    if (/[.!?…]["')\]]?$/.test(words[i] || "")) {
+      return words.slice(0, i + 1).join(" ");
+    }
+  }
+
+  /* Qwen ignored the limit: enforce it rather than displaying an essay. */
+  return words.slice(0, maxWords).join(" ").replace(/[,;:—-]+$/, "") + "…";
+}
+
 function splitLines(text) {
-  return text
+  const raw = String(text || "")
     .split("|||")
     .map((s) => s.replace(/^\s*[-•]\s*/, "").trim())
-    .filter(Boolean)
-    .slice(0, 3);
+    .filter(Boolean);
+
+  /* 1–2 is the normal dating-app rhythm. Preserve a third only when
+     the model deliberately used the ||| format for a multi-part reply. */
+  return raw
+    .slice(0, 3)
+    .map((s) => trimBubbleToWords(s, 18))
+    .filter(Boolean);
 }
 
 /* he texts first, unprompted, about whatever you were both just on */
