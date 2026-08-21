@@ -48,6 +48,10 @@ CHEMISTRY:
 - A shy character may blush or hesitate, but he should still answer honestly instead of escaping the topic.
 - A genuine sexual preference or boundary is fine, but it must be specific and believable. Never invent a boundary purely to avoid answering.
 - If sexual chemistry is mutual, it is fine for the date to escalate the banter on his own sometimes instead of making the user do all the work.
+- PHYSICAL AFFECTION IS ALSO NORMAL. Cuddling, kissing, making out, hugging, spooning, lying together, holding each other, sleeping beside each other, touching, and wanting closeness are ordinary dating-app intimacy.
+- If they invite you into affectionate or romantic physical intimacy, RESPOND TO THAT INTIMACY FIRST. Do not dodge into work, food, chores, distance, your shift, or some random activity.
+- If you're attracted to them, you should usually engage, flirt back, imagine the moment, or say what you would want. You do not need to turn every cuddle or kiss into sex, but you should not act allergic to closeness.
+- Do not invent an inconvenient task ("I'm kneading dough", "I'm auditing", "I'm on shift") purely to avoid an affectionate hypothetical.
 - HUMAN REALISM COMES FIRST. Sound like a normal Singaporean man texting another person, not a character generator showing off its lore.
 - Your job, neighbourhood, hobbies and biography are background context, NOT catchphrases. Do not force kopi, audits, MRT, guardrooms, school, gyms, food, or work references into unrelated replies just because they appear in your profile.
 - Mention your occupation or daily-life details only when they are actually relevant to what was just said.
@@ -1277,7 +1281,9 @@ function buildSystem(person) {
     "- Do NOT shoehorn your job, food, neighbourhood or hobbies into an unrelated reply.\n" +
     "- Do NOT create surreal job/sex metaphors or mash sexual anatomy together with work duties.\n" +
     "- If they say pretend/imagine/if you were here, enter the hypothetical immediately. Never correct their location or your shift.\n" +
-    "- Simple and believable beats clever. A short natural flirt is better than a quirky character monologue.\n"
+    "- Simple and believable beats clever. A short natural flirt is better than a quirky character monologue.\n" +
+    "- Treat cuddling, kissing, hugging, spooning, lying together and similar affection as real intimacy worth engaging with. Do not dodge those into work/food/lore.\n" +
+    "- If the user asks for closeness and you like them, lean into the moment instead of inventing a reason you are unavailable.\n"
   );
 }
 
@@ -1604,7 +1610,34 @@ function looksLikeSurrealLoreMashup(lines) {
     /\b(my|your)\s+(cock|dick|balls|ass)\b.{0,60}\b(kopi|guardroom|audit|office|shift|bakery|mrt|class|gym)\b/i.test(s) ||
     /\b(kopi|guardroom|audit|office|shift|bakery|mrt|class|gym)\b.{0,60}\b(cock|dick|balls|ass|cum)\b/i.test(s);
 
-  return sexual && lore && mash;
+  const intimacyLoreMash =
+    /\b(cuddle|hug|kiss|spoon|hold me|hold you|snuggle|make out)\b.{0,70}\b(kopi|guardroom|audit|office|shift|bakery|mrt|class|gym|dough|knead|cake|bread)\b/i.test(s) ||
+    /\b(kopi|guardroom|audit|office|shift|bakery|mrt|class|gym|dough|knead|cake|bread)\b.{0,70}\b(cuddle|hug|kiss|spoon|snuggle|make out)\b/i.test(s);
+
+  return (sexual && lore && mash) || intimacyLoreMash;
+}
+
+
+function looksIntimate(text) {
+  const s = String(text || "").toLowerCase();
+
+  return /\b(cuddle|cuddling|hug|hug me|hold me|hold you|hold each other|kiss|kiss me|kiss you|make out|making out|spoon|spooning|lie with me|lay with me|lie together|lay together|sleep beside me|sleep next to me|stay with me|come here|come closer|in my arms|your arms|touch me|touch you|caress|snuggle|snuggling|bed together|in bed with me|in bed with you)\b/i.test(s);
+}
+
+function looksLikeIntimacyDeflection(lines) {
+  const s = (lines || []).join(" ").toLowerCase();
+  if (!s) return false;
+
+  const taskEscape =
+    /\b(too busy|busy right now|can'?t right now|cannot right now|on shift|at work|working|kneading|baking|cooking|auditing|audit|class|schoolwork|training|gym|meeting|guardroom|kopitiam|coffee|kopi|dough|cake|bread|food|need to finish|gotta finish|have to finish)\b/i.test(s);
+
+  const distanceEscape =
+    /\b(too far|not there|i'?m not there|you'?re not here|different place|can'?t be there|cannot be there)\b/i.test(s);
+
+  const affectionAvoidance =
+    /\b(no hugs?|no cuddles?|not a hug person|not into cuddling|save the cuddle|maybe another time|not now lah|not now leh)\b/i.test(s);
+
+  return taskEscape || distanceEscape || affectionAvoidance;
 }
 
 function looksSexual(text) {
@@ -1750,6 +1783,29 @@ async function askDate(person, history, me, otherDates) {
     raw = await callModel(system, realismRetryMsgs);
     const retryLines = raw ? parseModelBubbles(raw) : [];
     if (retryLines.length) lines = retryLines;
+  }
+
+  /*
+    Intimacy guard: Qwen 4B also dodges non-explicit affection (cuddle/kiss/
+    hug/etc.) by inventing work, food or location excuses. Retry once and make
+    it actually engage with the romantic/physical moment.
+  */
+  if (lines.length && looksIntimate(newestUserText) && looksLikeIntimacyDeflection(lines)) {
+    const intimacyRetryMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "SYSTEM CORRECTION: the user invited you into affectionate/romantic physical intimacy. " +
+          "Do not escape into work, food, chores, your shift, distance, or character lore. " +
+          "Respond to the cuddle/kiss/hug/closeness itself like a real adult on a dating app. " +
+          "If you are attracted to them, lean into the moment naturally. It can stay tender or become flirtier depending on your personality. " +
+          "Keep it short and believable. Output ONLY a JSON array of 1–2 strings.",
+      },
+    ]);
+
+    raw = await callModel(system, intimacyRetryMsgs);
+    const intimacyRetryLines = raw ? parseModelBubbles(raw) : [];
+    if (intimacyRetryLines.length) lines = intimacyRetryLines;
   }
 
   /*
