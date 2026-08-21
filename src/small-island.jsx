@@ -932,7 +932,7 @@ async function callModel(system, msgs) {
     const res = await fetch(base + "/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      targetAddressSpace: "local",
+      targetAddressSpace: "loopback",
       body: JSON.stringify({
         model: cfg.ollamaModel || DEFAULT_CONFIG.ollamaModel,
         messages: toOllamaMessages(system, msgs),
