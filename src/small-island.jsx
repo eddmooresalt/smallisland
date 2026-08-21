@@ -10,6 +10,7 @@ You are a real adult man chatting with someone you matched with on Small Island,
 
 BE A PERSON, NOT A PROMPT:
 - Respond to the newest message first. Understand what they actually mean, including jokes, sarcasm, flirting, quoted replies and hypotheticals.
+- If they ask a direct question, ANSWER THAT QUESTION FIRST before adding anything else. For either/or questions, pick one or explain your actual preference instead of changing the subject.
 - Keep track of what both of you have already said. Do not invent events, knowledge, feelings or conversations that never happened.
 - Your personality and life story shape you quietly. They are background, not catchphrases. Do not force your job, food, neighbourhood or hobbies into unrelated replies.
 - FOLLOW THE USER'S CURRENT TOPIC. If a topic has been answered or they move on, move on too. Do not keep dragging an old subject back just because it relates to your job or personality.
@@ -2058,6 +2059,15 @@ export default function SmallIsland() {
   const matchedRef = useRef(matched);
   const openChatRef = useRef(openChat);
   const busyRef = useRef({});
+
+  /*
+    TURN LOCK:
+    - turnVersion increments every time the user sends something.
+    - pendingReply remembers that the newest user turn still needs an answer.
+    - any model/nudge response generated for an older version is discarded.
+  */
+  const turnVersionRef = useRef({});
+  const pendingReplyRef = useRef({});
   const lastInitiate = useRef(0);
 
   useEffect(() => { chatsRef.current = chats; }, [chats]);
@@ -2075,79 +2085,211 @@ export default function SmallIsland() {
   /* the dots run as long as the text takes to type — long text, long wait */
   const typingBeat = (line) => Math.min(5200, 460 + (line || "").length * 42) + Math.random() * 260;
 
-  const deliver = async (id, lines, isNudge) => {
+  const deliver = async (id, lines, isNudge, expectedVersion = null) => {
     for (let i = 0; i < lines.length; i++) {
+      /*
+        If the user typed again while this reply was being generated or while
+        the typing animation was running, do not let an old bubble arrive
+        underneath the newer message.
+      */
+      if (
+        expectedVersion !== null &&
+        (turnVersionRef.current[id] || 0) !== expectedVersion
+      ) {
+        setTypingFor(id, false);
+        return false;
+      }
+
       setTypingFor(id, true);
       await sleep(typingBeat(lines[i]));
+
+      if (
+        expectedVersion !== null &&
+        (turnVersionRef.current[id] || 0) !== expectedVersion
+      ) {
+        setTypingFor(id, false);
+        return false;
+      }
+
       setTypingFor(id, false);
       commit(id, [
         ...(chatsRef.current[id] || []),
-        { id: "h" + Date.now() + "-" + i, from: "him", text: lines[i], t: Date.now(), nudge: !!isNudge },
+        {
+          id: "h" + Date.now() + "-" + i,
+          from: "him",
+          text: lines[i],
+          t: Date.now(),
+          nudge: !!isNudge,
+        },
       ]);
-      if (openChatRef.current !== id) setUnread((u) => ({ ...u, [id]: true }));
-      if (i < lines.length - 1) await sleep(280 + Math.random() * 420); /* a breath between texts */
+
+      if (openChatRef.current !== id) {
+        setUnread((u) => ({ ...u, [id]: true }));
+      }
+
+      if (i < lines.length - 1) {
+        await sleep(280 + Math.random() * 420);
+      }
     }
+
+    return true;
   };
 
-  const runReply = async (id, history) => {
+  const runReply = async (id) => {
+    /*
+      If something is already generating for this chat, don't start a second
+      model call. sendTo() has already marked pendingReply=true; the active
+      worker will loop and answer the newest turn immediately afterward.
+    */
     if (busyRef.current[id]) return;
+
     busyRef.current[id] = true;
     const person = CAST.find((p) => p.id === id);
+
     try {
-      await sleep(340 + Math.random() * 520); /* he reads it first */
-      /* Show typing immediately while the local model is actually thinking/generating. */
-      setTypingFor(id, true);
-      let lines = null;
-      try {
-        const otherDates = matchedRef.current
-          .filter((otherId) => otherId !== id)
-          .map((otherId) => CAST.find((p) => p.id === otherId))
-          .filter(Boolean)
-          .map((p) => p.name);
-        lines = await askDate(person, history, meRef.current, otherDates);
-      } catch (e) {
-        lines = null;
+      while (pendingReplyRef.current[id]) {
+        pendingReplyRef.current[id] = false;
+
+        const expectedVersion = turnVersionRef.current[id] || 0;
+        const history = [...(chatsRef.current[id] || [])];
+
+        /*
+          If there is no unanswered user message anymore, nothing to do.
+        */
+        const last = history[history.length - 1];
+        if (!last || last.from !== "me") break;
+
+        await sleep(260 + Math.random() * 380);
+
+        /*
+          User may have sent another message during the "reading" beat.
+          Restart with the latest history instead of answering stale context.
+        */
+        if ((turnVersionRef.current[id] || 0) !== expectedVersion) {
+          pendingReplyRef.current[id] = true;
+          continue;
+        }
+
+        setTypingFor(id, true);
+
+        let lines = null;
+        try {
+          lines = await askDate(person, history, meRef.current, null);
+        } catch (e) {
+          lines = null;
+        }
+
+        /*
+          Most important check: generation can take seconds. If the user sent
+          anything else while Qwen was thinking, throw this old answer away.
+        */
+        if ((turnVersionRef.current[id] || 0) !== expectedVersion) {
+          setTypingFor(id, false);
+          pendingReplyRef.current[id] = true;
+          continue;
+        }
+
+        setTypingFor(id, false);
+
+        if (!lines || !lines.length) {
+          lines = offlineReply(person, history);
+        }
+
+        const delivered = await deliver(id, lines, false, expectedVersion);
+
+        if (!delivered) {
+          pendingReplyRef.current[id] = true;
+          continue;
+        }
+
+        /*
+          If a new user turn appeared during delivery, loop immediately.
+        */
+        if ((turnVersionRef.current[id] || 0) !== expectedVersion) {
+          pendingReplyRef.current[id] = true;
+        }
       }
-      setTypingFor(id, false);
-      if (!lines || !lines.length) lines = offlineReply(person, history);
-      await deliver(id, lines, false);
     } finally {
       busyRef.current[id] = false;
       setTypingFor(id, false);
+
+      /*
+        Close the microscopic race where the user sends between the final
+        while-condition and busy=false.
+      */
+      if (pendingReplyRef.current[id]) {
+        setTimeout(() => runReply(id), 0);
+      }
     }
   };
 
   const runNudge = async (id) => {
     if (busyRef.current[id]) return;
+
     busyRef.current[id] = true;
     const person = CAST.find((p) => p.id === id);
+    const expectedVersion = turnVersionRef.current[id] || 0;
+
     try {
+      const history = [...(chatsRef.current[id] || [])];
+
       let lines = null;
       try {
-        const otherDates = matchedRef.current
-          .filter((otherId) => otherId !== id)
-          .map((otherId) => CAST.find((p) => p.id === otherId))
-          .filter(Boolean)
-          .map((p) => p.name);
-        lines = await askNudge(person, chatsRef.current[id] || [], meRef.current, otherDates);
+        lines = await askNudge(person, history, meRef.current, null);
       } catch (e) {
         lines = null;
       }
-      if (!lines || !lines.length) lines = offlineNudge(person, chatsRef.current[id] || []);
-      if (lines && lines.length) await deliver(id, lines, true);
+
+      /*
+        If the user spoke while the nudge was generating, the nudge is stale.
+        Drop it completely and let the real reply worker answer the user.
+      */
+      if ((turnVersionRef.current[id] || 0) !== expectedVersion) {
+        return;
+      }
+
+      if (!lines || !lines.length) {
+        lines = offlineNudge(person, history);
+      }
+
+      if (lines && lines.length) {
+        await deliver(id, lines, true, expectedVersion);
+      }
     } finally {
       busyRef.current[id] = false;
       setTypingFor(id, false);
+
+      if (pendingReplyRef.current[id]) {
+        setTimeout(() => runReply(id), 0);
+      }
     }
   };
 
   const sendTo = (id, text, image, replyTo) => {
+    const nextVersion = (turnVersionRef.current[id] || 0) + 1;
+    turnVersionRef.current[id] = nextVersion;
+    pendingReplyRef.current[id] = true;
+
     const next = [
       ...(chatsRef.current[id] || []),
-      { id: "m" + Date.now(), from: "me", text, image, replyTo: replyTo || null, t: Date.now() },
+      {
+        id: "m" + Date.now(),
+        from: "me",
+        text,
+        image,
+        replyTo: replyTo || null,
+        t: Date.now(),
+      },
     ];
+
     commit(id, next);
-    runReply(id, next);
+
+    /*
+      runReply handles its own per-chat queue. If he's already generating,
+      this returns immediately and the active worker will restart on this
+      newest turn rather than dropping it.
+    */
+    runReply(id);
   };
 
   /* they can text first again, but only after you have actually participated; intimacy must be earned. */
@@ -2165,7 +2307,11 @@ export default function SmallIsland() {
         const since = now - (last.t || now);
 
         if (last.from === "me") {
-          /* you sent something and closed the room mid-thought — he still owes you an answer */
+          /*
+            Recovery only. Normal sends are handled immediately by TURN LOCK.
+            If a browser hiccup somehow left an unanswered turn behind, restart
+            it after 25 seconds.
+          */
           if (since > 25000) waiting.push([id, "reply", list]);
           continue;
         }
@@ -2188,7 +2334,8 @@ export default function SmallIsland() {
         ? owed[0]
         : waiting[Math.floor(Math.random() * waiting.length)];
       if (kind === "reply") {
-        runReply(id, list);
+        pendingReplyRef.current[id] = true;
+        runReply(id);
         return;
       }
       if (now - lastInitiate.current < 40000) return; /* paced, not a pile-on */
@@ -2200,6 +2347,9 @@ export default function SmallIsland() {
   }, [ready]);
 
   const startChat = (person, superd) => {
+    turnVersionRef.current[person.id] = turnVersionRef.current[person.id] || 0;
+    pendingReplyRef.current[person.id] = false;
+
     const lines = resolveOpener(person.opener).split("|||").map((t) => t.trim());
     const msgs = lines.map((t, i) => ({
       id: person.id + "-o" + i,
@@ -2897,7 +3047,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v4 Richer · Ollama on your PC through Tailscale. No per-message API bill.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v5 Turn Lock · Ollama on your PC through Tailscale. No per-message API bill.</p>
 
           <label className="fieldlabel">Model</label>
           <input
