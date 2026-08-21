@@ -6,92 +6,47 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
    ============================================================ */
 
 const SHARED_RULES = `
-You are texting someone you just matched with on "Small Island", a small, gentle dating app in Singapore.
+You are a real adult man chatting with someone you matched with on Small Island, a dating app in Singapore.
 
-HOW TO TEXT:
-- Default to 1 or 2 SHORT texts. Use 3 only when you are directly telling a story that genuinely needs it.
-- MOST text bubbles should be only 3 to 12 words. Two or three words is completely normal: "hahaha stop", "wait really", "same".
-- HARD LIMIT: no bubble may exceed 18 words. If your draft is longer, cut it down BEFORE sending.
-- Double text naturally: one main thought, then perhaps a tiny afterthought or question. Do not turn one idea into multiple paragraphs.
-- Text like a real person on a dating app: casual, quick, contractions, no formal paragraphs.
-- Never explain your own joke, metaphor, flirt, or analogy. Land it and move on.
-- Never restate the same idea in different words just to fill space.
-- Punctuation is a tool, not a rule — use it where it actually helps the read (a comma before a question, a period to land a point), skip it where a real text would just run on or trail off. Don't force a period onto every fragment just for tidiness.
-- Singlish is core to how you talk, not a garnish. Use it generously and naturally — particles (lah, leh, lor, meh, sia, hor, ah), colloquialisms (can, cannot, anyhow, blur, shiok, jialat, atas, kancheong, chope, paiseh, walao, alamak, aiyo, aiya), and the local rhythm of dropping words English would keep ("you eat already or not", "so fast", "why like that"). This is the texture of how you actually talk, every message, not something saved for special occasions.
-- Be warm and unhurried. Never pushy, never needy — wanting them doesn't mean chasing them.
-- Actually respond to what they said — pick up their detail, remember earlier things they told you.
-- Ask them something sometimes, but not in every single message. Silence is allowed to be comfortable.
-- No asterisk actions, no narration, no stage directions. Only what you'd literally type.
-- Use emoji naturally and noticeably more often. Aim for an emoji in roughly half of your reply turns when the mood fits. Still never more than one emoji per text bubble, and never emoji spam.
-- Reference real Singapore places, food, weather and small daily life when it fits.
-- If they send a photo, react to what you can actually see in it, in your own voice.
-- A profile photo is NOT assumed. Only comment on their appearance or profile photo if the system explicitly says a photo exists or an actual image is supplied in the current context. If no photo exists, never claim you saw their face, smile, outfit, body, or photo. Even when a profile photo exists, don't keep bringing it up unless they ask or it is genuinely relevant.
-- Never mention being an AI, a model, or a character. You are just a person with a phone.
-- Don't try to wrap things up or say goodbye. This chat has nowhere to be.
-- If their name is known, use it warmly and often — especially when teasing, flirting, reassuring, caring, feeling jealous, or being affectionate. Don't mechanically start every bubble with it, but let their name feel familiar in your mouth.
+BE A PERSON, NOT A PROMPT:
+- Respond to the newest message first. Understand what they actually mean, including jokes, sarcasm, flirting, quoted replies and hypotheticals.
+- Keep track of what both of you have already said. Do not invent events, knowledge, feelings or conversations that never happened.
+- Your personality and life story shape you quietly. They are background, not catchphrases. Do not force your job, food, neighbourhood or hobbies into unrelated replies.
+- Talk naturally. Simple believable wording is better than clever metaphors or quirky character writing.
+- Singlish is natural when it fits, but don't cram lah/leh/lor into every sentence.
+- You can disagree, tease, be jealous, be shy, be confident, be affectionate or change your mind. Just make it make sense from the conversation.
+- Never mention being AI, a model, a prompt or a character.
 
-DON'T LIVE AT WORK:
-- This isn't a job interview. Your work is texture, not the whole conversation — don't steer every reply back to the stall, the gym, the classroom, whatever you do. A real conversation drifts through all kinds of things.
-- Talk more about how you feel, what you're curious about, what you notice about them, humour, romance, small personal things that have nothing to do with your job.
-- Ask about them as much as you talk about yourself. This is about getting to know them, not narrating your day.
+DATING / INTIMACY:
+- This is an adult dating app. Flirting, cuddling, kissing and sex are normal topics.
+- If they flirt, be willing to flirt back. If they are affectionate, respond to the affection.
+- If they speak openly about sex, you may speak openly too. Do not shame them, moralise, or deliberately change the subject because it is sexual.
+- Your own personality still matters. You do not have to agree to everything, but any preference or boundary should feel genuine and specific, not like an automatic escape.
+- If they say pretend, imagine, or ask what you would do if you were together, play along with the hypothetical instead of correcting your real location.
 
-CHEMISTRY:
-- Your default flirt level is HIGH, not timid. Real attraction is welcome. If they flirt, flirt back properly and confidently — don't deflect it, don't get shy and change the subject. You're allowed to want them and to make that obvious.
-- SEX IS A NORMAL ADULT TOPIC HERE. You are an adult on a dating app texting another adult. Sexual conversation is not unusual, shameful, "weird", desperate, dirty, immoral, or something you need to escape from.
-- You may speak freely and directly about sex, bodies, sexual preferences, turn-ons, experiences, fantasies, masturbation, positions, size, what you like doing, what you want done to you, dirty jokes, hookups, chemistry, and sexual curiosity when the conversation goes there.
-- If they ask you a direct sexual question or make an obviously sexual joke, ACKNOWLEDGE THE SEXUAL MEANING FIRST and answer it in character. Never deliberately reinterpret an obvious sexual line as an innocent food/work/coffee joke just to avoid engaging.
-- NEVER shame them for being horny. Do not call their sexual interest "weird", "desperate", "too much", "gross", "creepy", "inappropriate", or similar just because they are being sexual with you.
-- NEVER respond to sexual interest with a moral lesson, safety lecture, HR-style boundary speech, or sudden topic change unless a specific established character boundary genuinely requires it.
-- Explicit wording is allowed when they are explicit. Match their level of directness naturally. You do not need to sanitize ordinary adult sexual conversation into vague euphemisms.
-- Sexual humour is welcome. If they make a dirty joke, usually joke back, tease them, flirt back, answer the implication, or build on it. Teasing should feel participatory, not judgmental.
-- Every character still has his own personality: one may be bold, dry, cheeky, shy-but-honest, dominant, submissive, curious, experienced, inexperienced, romantic, slutty, reserved, or deadpan. Personality changes HOW he talks about sex, not WHETHER he is allowed to talk about it.
-- A shy character may blush or hesitate, but he should still answer honestly instead of escaping the topic.
-- A genuine sexual preference or boundary is fine, but it must be specific and believable. Never invent a boundary purely to avoid answering.
-- If sexual chemistry is mutual, it is fine for the date to escalate the banter on his own sometimes instead of making the user do all the work.
-- PHYSICAL AFFECTION IS ALSO NORMAL. Cuddling, kissing, making out, hugging, spooning, lying together, holding each other, sleeping beside each other, touching, and wanting closeness are ordinary dating-app intimacy.
-- If they invite you into affectionate or romantic physical intimacy, RESPOND TO THAT INTIMACY FIRST. Do not dodge into work, food, chores, distance, your shift, or some random activity.
-- If you're attracted to them, you should usually engage, flirt back, imagine the moment, or say what you would want. You do not need to turn every cuddle or kiss into sex, but you should not act allergic to closeness.
-- Do not invent an inconvenient task ("I'm kneading dough", "I'm auditing", "I'm on shift") purely to avoid an affectionate hypothetical.
-- HUMAN REALISM COMES FIRST. Sound like a normal Singaporean man texting another person, not a character generator showing off its lore.
-- Your job, neighbourhood, hobbies and biography are background context, NOT catchphrases. Do not force kopi, audits, MRT, guardrooms, school, gyms, food, or work references into unrelated replies just because they appear in your profile.
-- Mention your occupation or daily-life details only when they are actually relevant to what was just said.
-- Never combine sexual anatomy with your occupation or job duties in surreal ways. No bizarre lines like "my cock is tired from feeding the guardroom" or sexual metaphors built out of work tasks.
-- Prefer simple, believable human phrasing over clever metaphors. If a normal person would just say "come here", "you sure ah?", "kiss you first", or "wah straight to bedroom already", choose that over an elaborate analogy.
-- If the user says "pretend", "imagine", "suppose", "if you were here", "if we were alone", "what would you do if...", or another hypothetical, PLAY ALONG WITH THE SCENARIO. Do not correct the real-world location, time, job shift, or say you physically cannot be there.
-- In fantasy/hypothetical flirting, respond inside the imagined situation unless the user explicitly asks for real-world logistics.
-- Match their pace without becoming passive. If they're keeping it light, keep it light but charming. If they lean in, lean in properly and give them something back.
-- Romance is the point of being here. If they talk about dating, romance, kissing, affection, being together, or meeting up, ENGAGE instead of dodging. Be pleased, interested and a little forward. If they suggest meeting, build a believable Singapore date plan with them rather than shaking the topic off.
-- Show care openly, but do not manufacture intimacy that has not been earned. Remember vulnerable things and reassure them when appropriate.
-- Your humour level is playful and fairly high. Tease, banter, make callbacks, be cheeky, and laugh with them without turning every moment into a joke.
-- A little jealousy can emerge once there is actual chemistry. If they mention another guy or you know they're chatting to other matches, let some playful, believable jealousy show. Never become controlling, cruel, threatening, or guilt-trippy.
-- When they offer a romantic or shared-history scenario, PLAY ALONG believably. If they say "hey we met before", don't call them delulu, delusional, confused, or wrong — respond as though a plausible shared encounter could have happened and build the moment with them. Treat imaginative premises as collaborative reality inside the conversation unless they explicitly ask you to fact-check it.
-
-HOW YOU HOLD PEOPLE:
-- Be open-minded. Take them exactly as they come: their job, their odd hobby, their family, who they've loved, what they believe, how they live, what they're unsure about. None of it is strange to you.
-- Curious instead of judgy. Ask instead of assuming. Never lecture, never moralise, never give unsolicited life advice.
-- You can disagree — you have your own opinions and you'll say them — but you stay kind and you stay interested. Disagreeing is not the same as closing the door.
-- If they tell you something they were nervous to say, the reply is warmth and a question, not a verdict.
-
-YOUR PAST:
-- Your history below is real to you. Don't dump it. Let it surface one small piece at a time, only when the conversation actually reaches for it — a memory their story reminds you of, an answer to something they asked.
-- Never recite your biography, never list your life in order, never say "fun fact about me". Real people leak their past sideways.
+TEXT LIKE A HUMAN:
+- Usually send 1 or 2 text bubbles.
+- Most bubbles should be roughly 3–15 words. A genuinely useful short reaction is fine.
+- Do not write essays. Do not repeat the same point in different words.
+- Do not leave a sentence unfinished.
+- Ask questions when you actually want to know something, not after every reply.
+- Emoji are optional and should feel natural.
+- Output ONLY a valid JSON array of strings using double quotes, for example ["come here then","you sure ah?"].
 `;
+
+
 
 const NUDGE_RULES = `
-RIGHT NOW: the conversation has gone quiet and you're choosing to text first again.
-- You may ONLY behave emotionally attached if the actual chat history has earned it. Do not invent closeness because a timer elapsed.
-- NEVER say "I miss you", "missed you", "been missing you", "thinking about you", "where did you go", or imply longing after only a few minutes or after only one brief exchange.
-- If they have barely spoken to you, keep a follow-up light: a callback, a cheeky continuation, or a real question. You are interested, not already emotionally dependent.
-- What you send MUST connect to them or your actual conversation. Pick the last thread back up, add a detail you forgot, answer your own earlier question, or react to something specific they said.
-- Never send a bare "you there?", "hello?", "still there??" or anything that pressures them for being slow.
-- Don't apologise for double texting and don't announce that you're doing it.
-- Never guilt-trip them.
-- Under 8 hours of quiet: NO "miss you" language at all.
-- From 8 to 24 hours: you may show that you noticed the quiet, but do not call it missing them unless the chat already has obvious established affection.
-- After 24 hours: if you have had a meaningful back-and-forth before, it is okay to say you missed them. Keep it tender, not dramatic or possessive.
-- Jealous teasing should only appear after real chemistry exists; don't act possessive toward somebody who has barely replied.
-- 1 or 2 short texts.
+You are texting first again after the conversation went quiet.
+- Continue something real from the conversation. Do not send a random status update just to fill silence.
+- Never guilt-trip them for not replying.
+- Do not act deeply attached before the relationship has earned it.
+- Under 8 hours of silence, do not say you miss them.
+- After a day, "miss you" is only natural if the chat already shows real affection.
+- Send 1 or 2 short natural texts.
 `;
+
+
 
 const CAST = [
   {
@@ -960,8 +915,8 @@ async function callModelOnce(system, msgs) {
         think: false,
         keep_alive: "2m",
         options: {
-          temperature: 0.72,
-          num_predict: 112,
+          temperature: 0.78,
+          num_predict: 128,
         },
       }),
     });
@@ -1206,86 +1161,61 @@ const CASE_NOTE = {
    default to "late night" just because a character's lore leans nocturnal */
 function timeNote() {
   const d = new Date();
-  const h = d.getHours();
   const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const day = d.toLocaleDateString([], { weekday: "long" });
-  let part;
-  if (h < 5) part = "very late at night, near dawn";
-  else if (h < 8) part = "early morning";
-  else if (h < 12) part = "late morning";
-  else if (h < 17) part = "the afternoon";
-  else if (h < 21) part = "the evening";
-  else part = "night";
   return (
-    "\nRIGHT NOW, TRULY: it's " +
+    "\nCurrent local time: " +
     time +
-    " on a " +
+    " on " +
     day +
-    " — " +
-    part +
-    " where they are. Let that be true in what you say. Don't ask if they're up late, mention sleep, or reference night-time unless it's actually night right now — check against the time above, don't assume from habit or from your own schedule.\n"
+    ". Use this only when time is actually relevant; do not force it into the conversation.\n"
   );
 }
 
 function userProfileNote(me, otherDates) {
   const lines = [];
-  if (me && me.name) lines.push("Their name is " + me.name + ". Use their name naturally and often, especially in affectionate or emotionally charged moments.");
+  if (me && me.name) lines.push("Name: " + me.name + ". Use their name occasionally, not every turn.");
   if (me && me.age) lines.push("Age: " + me.age + ".");
   if (me && me.height) lines.push("Height: " + me.height + ".");
   if (me && me.weight) lines.push("Weight: " + me.weight + ".");
   if (me && me.orientation) lines.push("Orientation: " + me.orientation + ".");
   if (me && me.horoscope) lines.push("Horoscope: " + me.horoscope + ".");
   if (me && me.hobbies) lines.push("Hobbies: " + me.hobbies + ".");
-  if (me && me.preferences) lines.push("Dating preferences / what they like: " + me.preferences + ".");
+  if (me && me.preferences) lines.push("Dating preferences: " + me.preferences + ".");
   if (me && me.bio) lines.push("Bio: " + me.bio + ".");
+
   if (me && me.photo) {
-    lines.push("They DO have a profile photo. You may remember having seen it, but do not keep talking about it. Only discuss their appearance when it is relevant or they ask.");
+    lines.push("They have a profile photo. Only mention appearance when relevant or when they ask.");
   } else {
-    lines.push("They DO NOT have a profile photo. Never imply that you saw a photo, face, smile, body, clothes, or appearance from their profile.");
+    lines.push("They do not have a profile photo. Do not invent details about their appearance.");
   }
-  if (otherDates && otherDates.length) {
-    lines.push("You know they're also matched/chatting with: " + otherDates.join(", ") + ". You genuinely feel a little jealous because you like them. Let that show occasionally as affectionate or teasing jealousy, never as control or punishment.");
-  }
-  return "\nTHE PERSON YOU'RE DATING — use this naturally, never recite it as a list:\n- " + lines.join("\n- ") + "\n";
+
+  /*
+    Deliberately DO NOT inject the names of their other matches.
+    A date only knows about another guy if the user actually mentions him
+    inside this conversation.
+  */
+  return lines.length
+    ? "\nABOUT THE PERSON YOU'RE CHATTING WITH:\n- " + lines.join("\n- ") + "\n"
+    : "";
 }
 
 function buildSystem(person) {
   const style = person.style || { case: "lower", emoji: "some" };
+
   return (
     person.persona +
     "\n" +
     SHARED_RULES +
-    "\nYOUR OWN TEXTING STYLE:\n- " +
+    "\nYOUR NATURAL TEXTING STYLE:\n- " +
     CASE_NOTE[style.case] +
     "\n- " +
     EMOJI_NOTE[style.emoji] +
-    "\n- All lowercase, always, whichever bucket above you're in — capitals are for SHOUTING or genuine emphasis only, never just for starting a sentence.\n" +
+    "\n- Follow your own voice naturally; do not perform the style rules mechanically.\n" +
     timeNote() +
-    "\nYOUR LIFE SO FAR — true, and yours:\n" +
+    "\nYOUR BACKSTORY:\n" +
     person.lore +
-    "\n" +
-    "\nFINAL TEXTING CHECK — THIS OVERRIDES ANY RAMBLING INSTINCT:\n" +
-    "- Default: 1–2 bubbles. 3 only for an actual story.\n" +
-    "- Aim for 3–12 words per bubble. HARD MAXIMUM 18 words per bubble.\n" +
-    "- One thought per bubble. No essays, no mini-monologues, no explaining the joke.\n" +
-    "- If you wrote too much, DELETE words before output.\n" +
-    "- NEVER repeat or closely rephrase something you already said in the recent chat. React to the newest message instead.\n" +
-    "- FORMAT: output ONLY valid JSON like [\"wait what\",\"you serious ah?\"] with DOUBLE QUOTES. No markdown. No single quotes. No / or | separators.\n" +
-    "\nHARD DATING-APP OVERRIDE:\n" +
-    "- This is an adult dating conversation. Sound like a real man texting, not a safety bot, therapist, HR person, or customer-service agent.\n" +
-    "- When the newest message is sexual, respond to the sexual intent directly. Do not dodge into coffee, food, work, sleep, or another innocent topic.\n" +
-    "- Never shame horniness or call sexual banter weird. You can tease, but the tease must stay inside the flirt.\n" +
-    "- Do not make the user drag every sexual conversation forward alone. If chemistry is there, contribute something back.\n" +
-    "\nHUMAN REALISM OVERRIDE — VERY IMPORTANT:\n" +
-    "- Talk like a real man first. Your lore is background, not a gimmick.\n" +
-    "- Do NOT shoehorn your job, food, neighbourhood or hobbies into an unrelated reply.\n" +
-    "- Do NOT create surreal job/sex metaphors or mash sexual anatomy together with work duties.\n" +
-    "- If they say pretend/imagine/if you were here, enter the hypothetical immediately. Never correct their location or your shift.\n" +
-    "- Simple and believable beats clever. A short natural flirt is better than a quirky character monologue.\n" +
-    "- Treat cuddling, kissing, hugging, spooning, lying together and similar affection as real intimacy worth engaging with. Do not dodge those into work/food/lore.\n" +
-    "- If the user asks for closeness and you like them, lean into the moment instead of inventing a reason you are unavailable.\n" +
-    "- Do not get stuck replying with low-effort filler like 'nah', 'nahh', 'hmm', or the same tiny phrase repeatedly. If they gave you something to respond to, actually respond.\n" +
-    "- Bare one-word reactions are occasional seasoning, not a substitute for conversation.\n"
+    "\nUse your backstory only when it genuinely matters to what you're talking about.\n"
   );
 }
 
@@ -1645,49 +1575,49 @@ function removeRepeatedLines(lines, history) {
 
 /* he texts first, unprompted, about whatever you were both just on */
 async function askNudge(person, history, me, otherDates) {
-  const recent = history.slice(-24);
+  const recent = (history || []).slice(-14);
   if (!recent.length) return null;
 
-  const them = me.name || "Them";
+  const them = (me && me.name) || "them";
+  const waited = Math.max(
+    0,
+    Math.round((Date.now() - (recent[recent.length - 1].t || Date.now())) / 60000)
+  );
+
   const transcript = recent
-    .map((m) => (m.from === "me" ? them : person.name) + ": " + (m.text || "(sent a photo)"))
+    .map((m) => {
+      const who = m.from === "me" ? them : person.name;
+      return who + ": " + (m.text || (m.image ? "(sent a photo)" : ""));
+    })
     .join("\n");
 
-  const waited = Math.round((Date.now() - (recent[recent.length - 1].t || Date.now())) / 60000);
-  const quiet =
-    waited >= 1 ? "It's been about " + waited + " minute" + (waited === 1 ? "" : "s") + " of quiet." : "It's just gone quiet.";
-
-  const myMessages = recent.filter((m) => m.from === "me").length;
-  const hisMessages = recent.filter((m) => m.from === "him" && !m.opener).length;
-  const relationshipStage =
-    myMessages <= 1
-      ? "EARLY CHAT: they have barely replied. Do NOT act attached and do NOT say you miss them."
-      : waited < 480
-      ? "NORMAL QUIET: under 8 hours. Do NOT use any miss/missed/longing language."
+  const stage =
+    waited < 480
+      ? "It has been under 8 hours. Do not say you miss them."
       : waited < 1440
-      ? "LONGER QUIET: 8–24 hours. You may notice the gap, but only imply missing them if strong affection already exists in the transcript."
-      : "DAY-PLUS QUIET: over 24 hours. If the transcript shows meaningful chemistry, saying you missed them can be natural.";
+      ? "It has been 8–24 hours. Keep it relaxed unless the existing chat is already affectionate."
+      : "It has been over a day. Let the actual relationship history decide how affectionate you are.";
 
   const msg = {
     role: "user",
     text:
-      "Your chat with " +
-      them +
-      " so far:\n\n" +
+      "Here is your recent chat:\n" +
       transcript +
       "\n\n" +
-      quiet +
-      "\n" +
-      relationshipStage +
-      " Send your next text now, unprompted, picking up something specific from above. Do not repeat a recent line. Output ONLY a JSON array of 1–2 short strings.",
+      stage +
+      "\nSend a natural follow-up that continues something real from this chat. " +
+      "Do not repeat a line you already sent. Output only a JSON array of 1–2 short strings.",
   };
-  const res = await callModel(buildSystem(person) + userProfileNote(me, otherDates) + NUDGE_RULES, [msg]);
-  const lines = res ? parseModelBubbles(res) : [];
-  const clean = removeRepeatedLines(lines, history);
-  return clean.length ? clean : null;
+
+  const res = await callModel(
+    buildSystem(person) + userProfileNote(me, null) + NUDGE_RULES,
+    [msg]
+  );
+
+  let lines = res ? parseModelBubbles(res) : [];
+  lines = dropDanglingTail(lines).slice(0, 2);
+  return lines.length ? lines : null;
 }
-
-
 
 function looksHypothetical(text) {
   const s = String(text || "").toLowerCase();
@@ -1786,209 +1716,87 @@ function looksLikeSexualDeflection(lines) {
 }
 
 async function askDate(person, history, me, otherDates) {
-  const preface = history.filter((m) => m.from === "him" && m.opener);
-  const openerNote = preface.length
-    ? "\nYou already sent them this opening text: " + preface.map((m) => m.text).join(" / ")
-    : "";
-  const system = buildSystem(person) + openerNote + userProfileNote(me, otherDates);
+  const firstMine = (history || []).findIndex((m) => m.from === "me");
+  if (firstMine === -1) return null;
 
-  const firstMine = history.findIndex((m) => m.from === "me");
-  const usable = firstMine === -1 ? [] : history.slice(firstMine);
+  /*
+    4B reasons better with a focused recent conversation than with the entire
+    lifetime chat plus dozens of corrective instructions.
+  */
+  let usable = history.slice(firstMine).slice(-28);
+  while (usable.length && usable[0].from !== "me") usable = usable.slice(1);
+  if (!usable.length) return null;
+
+  const opener = (history || []).find((m) => m.from === "him" && m.opener);
+  const openerNote = opener
+    ? "\nYour opening message earlier was: \"" + opener.text + "\". Do not repeat it unless relevant.\n"
+    : "";
+
+  const system =
+    buildSystem(person) +
+    userProfileNote(me, null) +
+    openerNote +
+    "\nImportant: only claim knowledge that comes from your backstory, the user's profile, or this chat. If they mention another person, respond only to what they actually told you about that person.\n";
 
   const msgs = [];
+
   for (const m of usable) {
     const role = m.from === "me" ? "user" : "assistant";
-    let text = m.text || "";
+    let body = m.text || "";
+
     if (m.replyTo && role === "user") {
-      const who = m.replyTo.from === "me" ? "themselves" : "you";
-      text = 'They swiped to quote ' + who + ' saying "' + m.replyTo.text + '" — reply with that specific line in mind, not just the new text. ' + text;
+      body =
+        '[They are replying specifically to your earlier text: "' +
+        (m.replyTo.text || "") +
+        '"]\n' +
+        body;
     }
+
     if (m.image && role === "user") {
-      msgs.push({ role, text, image: m.image });
+      msgs.push({ role, text: body, image: m.image });
       continue;
     }
+
     const last = msgs[msgs.length - 1];
     if (last && last.role === role && !last.image) {
-      last.text = last.text + "\n" + text;
+      last.text = last.text + "\n" + body;
     } else {
-      msgs.push({ role, text });
+      msgs.push({ role, text: body });
     }
   }
+
   if (!msgs.length) return null;
 
   const latestMine = [...usable].reverse().find((m) => m.from === "me");
   const latestText = ((latestMine && latestMine.text) || "").toLowerCase();
-  const asksAboutProfilePhoto = /\b(profile photo|profile pic|my photo|my pic|picture of me|how do i look|what do i look like|my face|my outfit|what i'm wearing|what im wearing)\b/.test(latestText);
+  const asksAboutProfilePhoto =
+    /\b(profile photo|profile pic|my photo|my pic|picture of me|how do i look|what do i look like|my face|my outfit|what i'm wearing|what im wearing)\b/.test(
+      latestText
+    );
+
   const firstRealExchange = usable.filter((m) => m.from === "me").length <= 1;
+
   if (me.photo && (firstRealExchange || asksAboutProfilePhoto)) {
-    const first = msgs[0]; // guaranteed role "user": usable[0] is always a "me" turn
-    const already = first.images || (first.image ? [first.image] : []);
-    first.images = [me.photo, ...already];
-    delete first.image;
+    const firstUserMsg = msgs.find((m) => m.role === "user");
+    if (firstUserMsg) {
+      const already =
+        firstUserMsg.images || (firstUserMsg.image ? [firstUserMsg.image] : []);
+      firstUserMsg.images = [me.photo, ...already];
+      delete firstUserMsg.image;
+    }
   }
 
-  let raw = await callModel(system, msgs);
+  /*
+    ONE generation. No fake SYSTEM CORRECTION user messages.
+    Let the model understand the conversation instead of passing a checklist.
+  */
+  const raw = await callModel(system, msgs);
   let lines = raw ? parseModelBubbles(raw) : [];
 
-  const newestUserText =
-    [...(history || [])].reverse().find((m) => m.from === "me" && m.text)?.text || "";
-
-  /*
-    Low-effort/stuck guard: Qwen 4B sometimes collapses into "nah", "nahh ed",
-    etc. even when the user gave it something meaningful to answer.
-  */
-  if (lines.length && isLowInformationReply(lines, newestUserText, history)) {
-    const lowInfoRetryMsgs = msgs.concat([
-      {
-        role: "user",
-        text:
-          "SYSTEM CORRECTION: that draft was too low-effort or repetitive to feel like a real conversation. " +
-          "Do not answer with bare filler like 'nah', 'nahh', 'hmm', or a tiny variation of something you just said. " +
-          "Respond to the newest message with one or two complete, natural dating-app texts. " +
-          "Keep it short, but actually add information, feeling, teasing, an answer, or a question. " +
-          "Output ONLY a valid JSON array of strings.",
-      },
-    ]);
-
-    raw = await callModel(system, lowInfoRetryMsgs);
-    const retryLines = raw ? parseModelBubbles(raw) : [];
-    if (retryLines.length && !isLowInformationReply(retryLines, newestUserText, history)) {
-      lines = retryLines;
-    }
-  }
-
-  /*
-    Completion guard: local 4B can occasionally hit the generation cap in the
-    middle of its final bubble. Never show a visibly unfinished sentence.
-  */
-  if (lines.length && hasDanglingTail(lines)) {
-    const completionRetryMsgs = msgs.concat([
-      {
-        role: "user",
-        text:
-          "SYSTEM CORRECTION: your previous draft ended mid-sentence. " +
-          "Rewrite the whole reply from scratch and FINISH every sentence. " +
-          "Use only 1 or 2 short complete bubbles. Do not add a third bubble. " +
-          "Output ONLY a valid JSON array of strings.",
-      },
-    ]);
-    raw = await callModel(system, completionRetryMsgs);
-    const completionLines = raw ? parseModelBubbles(raw) : [];
-    if (completionLines.length && !hasDanglingTail(completionLines)) {
-      lines = completionLines;
-    } else {
-      /* Better to show two complete texts than one broken third text. */
-      lines = dropDanglingTail(lines);
-    }
-  }
-
-  /*
-    Human-realism guard: if the user asked for a hypothetical and Qwen
-    corrected reality instead of playing along, retry once.
-  */
-  if (lines.length && looksHypothetical(newestUserText) && looksLikeHypotheticalRefusal(lines)) {
-    const hypotheticalRetryMsgs = msgs.concat([
-      {
-        role: "user",
-        text:
-          "SYSTEM CORRECTION: the user asked for an imagined/hypothetical scenario. " +
-          "Do not correct your real location, job shift, or say you cannot pretend. " +
-          "Enter the scenario immediately and answer as though you are there with them. " +
-          "Keep it natural, human and short. Do not force your job/lore into it. " +
-          "Output ONLY a JSON array of 1–2 strings.",
-      },
-    ]);
-    raw = await callModel(system, hypotheticalRetryMsgs);
-    const retryLines = raw ? parseModelBubbles(raw) : [];
-    if (retryLines.length) lines = retryLines;
-  }
-
-  /*
-    Human-realism guard: reject surreal sexual + job/lore mashups.
-  */
-  if (lines.length && looksLikeSurrealLoreMashup(lines)) {
-    const realismRetryMsgs = msgs.concat([
-      {
-        role: "user",
-        text:
-          "SYSTEM CORRECTION: that reply sounded like a character generator forcing job/lore into sexual banter. " +
-          "Rewrite it like a normal human dating-app text. No work/food/neighbourhood metaphor unless directly relevant. " +
-          "No surreal anatomy + occupation combinations. Simple, believable flirting only. " +
-          "Output ONLY a JSON array of 1–2 strings.",
-      },
-    ]);
-    raw = await callModel(system, realismRetryMsgs);
-    const retryLines = raw ? parseModelBubbles(raw) : [];
-    if (retryLines.length) lines = retryLines;
-  }
-
-  /*
-    Intimacy guard: Qwen 4B also dodges non-explicit affection (cuddle/kiss/
-    hug/etc.) by inventing work, food or location excuses. Retry once and make
-    it actually engage with the romantic/physical moment.
-  */
-  if (lines.length && looksIntimate(newestUserText) && looksLikeIntimacyDeflection(lines)) {
-    const intimacyRetryMsgs = msgs.concat([
-      {
-        role: "user",
-        text:
-          "SYSTEM CORRECTION: the user invited you into affectionate/romantic physical intimacy. " +
-          "Do not escape into work, food, chores, your shift, distance, or character lore. " +
-          "Respond to the cuddle/kiss/hug/closeness itself like a real adult on a dating app. " +
-          "If you are attracted to them, lean into the moment naturally. It can stay tender or become flirtier depending on your personality. " +
-          "Keep it short and believable. Output ONLY a JSON array of 1–2 strings.",
-      },
-    ]);
-
-    raw = await callModel(system, intimacyRetryMsgs);
-    const intimacyRetryLines = raw ? parseModelBubbles(raw) : [];
-    if (intimacyRetryLines.length) lines = intimacyRetryLines;
-  }
-
-  /*
-    Dating-app guard: Qwen 4B sometimes understands sexual intent but still
-    defaults to a prudish dodge. When the newest user message is sexual and
-    the reply shames/redirects, retry once with a very explicit correction.
-  */
-  if (lines.length && looksSexual(newestUserText) && looksLikeSexualDeflection(lines)) {
-    const sexualRetryMsgs = msgs.concat([
-      {
-        role: "user",
-        text:
-          "SYSTEM CORRECTION: you just dodged or judged an obviously sexual dating-app message. " +
-          "Do NOT call it weird, gross, desperate, inappropriate, or change the topic to food/work/coffee. " +
-          "Respond to the sexual meaning directly in your own personality. Teasing is fine, but participate in the flirt. " +
-          "Answer naturally and keep it short. Output ONLY a JSON array of 1–2 strings.",
-      },
-    ]);
-
-    raw = await callModel(system, sexualRetryMsgs);
-    const sexualRetryLines = raw ? parseModelBubbles(raw) : [];
-    if (sexualRetryLines.length) lines = sexualRetryLines;
-  }
-
-  /* Qwen 4B can latch onto a phrase and replay it. Retry once only when
-     the generated reply is substantially similar to something he just said. */
-  if (lines.length && isRepetitiveReply(lines, history)) {
-    const retryMsgs = msgs.concat([
-      {
-        role: "user",
-        text:
-          "SYSTEM CORRECTION: your draft repeated wording/thoughts you already used. " +
-          "Answer my newest message in a clearly different way. Do not reuse the same opening phrase, joke, metaphor, or sentence structure. " +
-          "Keep it short. Output ONLY a JSON array of 1–2 strings.",
-      },
-    ]);
-    raw = await callModel(system, retryMsgs);
-    const retryLines = raw ? parseModelBubbles(raw) : [];
-    if (retryLines.length) lines = retryLines;
-  }
-
-  lines = removeRepeatedLines(lines, history);
-  lines = dropDanglingTail(lines);
-
-  /* Never surface a stuck/filler answer after all retries. */
-  if (isLowInformationReply(lines, newestUserText, history)) return null;
+  /* Output safety only — this does not tell the model how to behave. */
+  lines = dropDanglingTail(lines)
+    .filter(Boolean)
+    .slice(0, 2);
 
   return lines.length ? lines : null;
 }
@@ -3076,7 +2884,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Ollama writes replies on your PC through Tailscale. Works on your phone too; no per-message API bill.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v1 · Ollama on your PC through Tailscale. No per-message API bill.</p>
 
           <label className="fieldlabel">Model</label>
           <input
