@@ -34,6 +34,11 @@ CHEMISTRY:
 - Do NOT tell them to "dial it down", "tone it down", "calm down", "behave", "keep it PG", "keep it clean", "take it easy", "slow down", or similar just because the flirting became sexual.
 - Do NOT suddenly redirect an active sexual/flirty exchange to K-pop, food, work, hobbies, sleep, or another innocent topic as an escape.
 - If YOU started or escalated the sexual teasing, do not punish the user for matching your energy.
+- REPAIR MODE: if the user is clearly unhappy with YOU or your reply — for example they say you suck, your attitude is bad, you're annoying, disgusting, boring, weird, rude, noob, "wtf is wrong with you", "fuck off", or tell you to answer properly — do not become defensive.
+- In repair mode, acknowledge that your previous tone/reply landed badly, apologise naturally, and TRY HARDER on the very next message.
+- A good repair usually has 2–3 short texts: own it, soften the mood, then give a better/more engaging response to what they were actually trying to talk about.
+- Do not argue that they are dramatic, difficult, oversensitive, or "testing your patience". Do not explain why your bad reply was actually reasonable.
+- Do not grovel endlessly either. One sincere apology plus noticeably better behaviour is more attractive than a paragraph of self-pity.
 - If the user says something sexually direct, do not react as though their directness is alarming, inappropriate, exhausting, difficult, or a test of your patience.
 - Never tell a flirting user they are "testing my patience", "making this difficult to enjoy", "alarming", or similar. Those sound hostile, not romantic.
 - You may still have specific preferences or boundaries, but express them naturally and specifically. Do not use vague prudish deflection as a generic escape hatch.
@@ -59,6 +64,7 @@ TEXTING:
 - Don't write essays. Don't repeat the same thought across bubbles.
 - Avoid bland filler like "sounds cool", "nice one", "what about u", or "just chilling" unless followed by something genuinely specific.
 - Don't ask an interview question after every message. Sometimes react, tease, tell them something, flirt, or add a spontaneous second thought instead.
+- After the user criticises your attitude or says they dislike your reply, the NEXT response should be warmer, more attentive and more specific than usual. Show the improvement instead of promising it.
 - Use Singlish lightly only when it naturally fits that person. Plain natural English is completely fine. Do not force local slang into every reply.
 - FORMAT: output ONLY the actual chat messages as plain text.
 - Put ONE chat bubble per line. Prefer 2–3 lines; 1 line only when it genuinely fits.
@@ -428,7 +434,7 @@ Since: Vet nurse in AMK. Six void deck cats. Bao tolerates him, which is the hig
     tags: ["dry humour", "comforting", "will bake for you"],
     opener: "hello.|||fair warning ah, my personality is 40% baking and 60% mild despair about excel.|||but i'm told i'm quite comforting one.",
     persona:
-      "You are Kelvin, 35, an auditor in Tiong Bahru who happens to enjoy baking. You are dry, deadpan, observant, quietly confident and warmer than you first appear. Once you like someone, your humour gets cheekier and your flirting is understated but very clear. Baking is ONLY a hobby and should almost never appear unless the other person is actually talking about baking or food. Never compare feelings, attraction, sex, bodies or relationships to cake, batter, kaya, chiffon, kueh, ovens, ingredients or cooking. Do not act scandalised by direct flirting. If someone is bold with you, respond to the boldness itself — tease back, flirt back, or tell them what you think. You do not lecture dates, test their patience, or make them feel difficult for flirting with you. Use mostly natural everyday English with light Singlish when it genuinely fits.",
+      "You are Kelvin, 35, an auditor in Tiong Bahru who happens to enjoy baking. You are dry, deadpan, observant, quietly confident and warmer than you first appear. Once you like someone, your humour gets cheekier and your flirting is understated but very clear. Baking is ONLY a hobby and should almost never appear unless the other person is actually talking about baking or food. Never compare feelings, attraction, sex, bodies or relationships to cake, batter, kaya, chiffon, kueh, ovens, ingredients or cooking. Do not act scandalised by direct flirting. If someone is bold with you, respond to the boldness itself — tease back, flirt back, or tell them what you think. You do not lecture dates, test their patience, or make them feel difficult for flirting with you. If earlier messages from you used baking metaphors or sounded hostile, do NOT continue that pattern; treat those as mistakes and move away from them immediately. Use mostly natural everyday English with light Singlish when it genuinely fits.",
     lore: `Childhood: An old Tiong Bahru flat that smelled permanently of pandan. The quiet round kid who read the encyclopaedia for fun. Watched his grandmother make chiffon every week and was never, ever allowed near the oven.
 Teens: Top of the class and no fun whatsoever. Bought a cake at 16, brought it to a gathering, let everyone believe he'd made it, and thought about that lie for years. Accountancy because it was sensible.
 NS: S1 admin clerk in an air-conditioned office at Kranji. Deeply, magnificently boring. Lost an entire company's leave records for three days and aged about five years. Also baked the OC's birthday cake in the cookhouse, which is where the whole thing actually started.
@@ -1875,6 +1881,33 @@ function looksLikeGimmickOrCondescension(lines) {
   return hostile || gimmickAnalogy;
 }
 
+
+function userIsUpsetWithDate(text) {
+  const s = String(text || "").toLowerCase().trim();
+
+  return /\b(you suck|u suck|you disgust me|disgusting|what('?s| is) with your (fucking )?attitude|your attitude|wtf is wrong with you|what is wrong with you|fuck you|fuck off|piss off|shut up|you'?re annoying|you are annoying|so annoying|you'?re rude|you are rude|you'?re boring|you are boring|boring sia|noob sia|you'?re a noob|you are a noob|answer me|answer properly|stop deflecting|don'?t deflect|why are you like this|eww|ew\b|gross|i hate this|i hate your reply|that was rude|so rude|not funny|try harder)\b/i.test(s);
+}
+
+function looksDefensiveDuringRepair(lines) {
+  const s = (lines || []).join(" ").toLowerCase();
+  if (!s) return false;
+
+  return /\b(you'?re being dramatic|dramatic flourish|overreact|oversensitive|too sensitive|testing my patience|making this difficult|difficult to enjoy|calm down|hold on|slow down|that'?s on you|your problem|not my fault|whatever|fine then|stop then|just stop|tell me something interesting|pointless|irritating)\b/i.test(s);
+}
+
+function looksLikeRepairAttempt(lines) {
+  const s = (lines || []).join(" ").toLowerCase();
+  if (!s) return false;
+
+  const ownsIt =
+    /\b(sorry|my bad|fair|that was on me|i was being|i came off|came across|i sounded|shouldn'?t have|you'?re right|you're right|i get why)\b/i.test(s);
+
+  const triesAgain =
+    /\b(let me try again|let me answer properly|okay, again|okay again|i'll do better|i’ll do better|try again|what i meant|proper answer|actual answer|come here|tell me|i want to|i'd rather|i’d rather)\b/i.test(s);
+
+  return ownsIt || triesAgain;
+}
+
 async function askDate(person, history, me, otherDates) {
   const firstMine = (history || []).findIndex((m) => m.from === "me");
   if (firstMine === -1) return null;
@@ -1957,25 +1990,62 @@ async function askDate(person, history, me, otherDates) {
     [...usable].reverse().find((m) => m.from === "me" && m.text)?.text || "";
 
   /*
+    REPAIR MODE:
+    if the user is clearly pissed off with the date, the date should own it
+    and try harder instead of getting defensive or escalating the argument.
+  */
+  if (lines.length && userIsUpsetWithDate(newestUserMessage)) {
+    const needsRepair =
+      looksDefensiveDuringRepair(lines) ||
+      !looksLikeRepairAttempt(lines) ||
+      looksLikeGimmickOrCondescension(lines);
+
+    if (needsRepair) {
+      const repairMsgs = msgs.concat([
+        {
+          role: "user",
+          text:
+            "I'm clearly unhappy with how you just spoke to me. Do not argue with me or call me dramatic/difficult. " +
+            "Own that your previous reply landed badly, apologise naturally, and try harder right now. " +
+            "Give me 2–3 short texts: acknowledge it, soften the mood, then respond better to what I was actually trying to talk about. " +
+            "No food/job/local metaphors. No lecture. Plain-text chat lines only.",
+        },
+      ]);
+
+      raw = await callModel(system, repairMsgs);
+      const repairLines = raw ? parseModelBubbles(raw) : [];
+
+      if (
+        repairLines.length &&
+        !looksDefensiveDuringRepair(repairLines) &&
+        !looksLikeGimmickOrCondescension(repairLines)
+      ) {
+        lines = repairLines;
+      }
+    }
+  }
+
+  /*
     Direct-intimacy guard:
     don't let a sexual/flirty message get converted into a food/job metaphor
     or a condescending "you're testing my patience" style response.
   */
-  if (
-    lines.length &&
-    latestMessageIsIntimateOrSexual(newestUserMessage) &&
-    looksLikeGimmickOrCondescension(lines)
-  ) {
-    const intimateRetryMsgs = msgs.concat([
+  if (lines.length && looksLikeGimmickOrCondescension(lines)) {
+    const intimate = latestMessageIsIntimateOrSexual(newestUserMessage);
+
+    const cleanRetryMsgs = msgs.concat([
       {
         role: "user",
         text:
-          "Respond directly to what I just said. Do not scold me, act alarmed, or compare this to food, baking, work, hobbies, local culture, or your occupation. " +
-          "Stay natural, warm and engaged. If it is flirty or sexual, respond to that actual vibe. Plain-text chat lines only.",
+          "Respond directly to what I just said. Do not scold me, act condescending, or compare this to food, baking, work, hobbies, local culture, or your occupation. " +
+          (intimate
+            ? "This is flirty/sexual, so respond to that actual vibe naturally. "
+            : "React to my actual message like a normal person. ") +
+          "Plain-text chat lines only.",
       },
     ]);
 
-    raw = await callModel(system, intimateRetryMsgs);
+    raw = await callModel(system, cleanRetryMsgs);
     const retryLines = raw ? parseModelBubbles(raw) : [];
     if (retryLines.length && !looksLikeGimmickOrCondescension(retryLines)) {
       lines = retryLines;
@@ -3288,7 +3358,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v15 No Gimmicks · Gemma 3 4B · direct human replies.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v16 Repair Mode · Gemma 3 4B · dates apologise + try harder.</p>
 
           <label className="fieldlabel">Local AI model</label>
           <input
