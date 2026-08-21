@@ -1255,8 +1255,13 @@ function buildSystem(person) {
 function cleanProtocolDebris(text) {
   let s = String(text || "").trim();
 
-  /* Remove wrappers leaked by tiny-model pseudo JSON / list formatting. */
+  /*
+    Repair punctuation leaked by malformed JSON / pseudo-JSON.
+    Important: this is display cleanup only; it never changes user messages.
+  */
   s = s
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
     .replace(/\\(["'])/g, "$1")
     .replace(/^\s*[\[\(]\s*/, "")
     .replace(/\s*[\]\)]\s*$/, "")
@@ -1267,6 +1272,19 @@ function cleanProtocolDebris(text) {
     .replace(/^\s*(?:\|+|\/+)\s*/, "")
     .replace(/\s*(?:\|+|\/+)\s*$/, "")
     .trim();
+
+  /*
+    If Dolphin leaked ONE unmatched double quote into an otherwise-normal
+    bubble, remove it. Preserve balanced quotes because those may be real
+    quoted speech.
+  */
+  const quoteCount = (s.match(/"/g) || []).length;
+  if (quoteCount % 2 === 1) {
+    s = s.replace(/"/g, "").trim();
+  }
+
+  /* Protocol commas should never be the visible ending of a chat bubble. */
+  s = s.replace(/\s*[,;]+\s*$/, "").trim();
 
   return s;
 }
@@ -1355,18 +1373,44 @@ function parseModelBubbles(text) {
        We don't need to fully parse Python; we only need clean bubble text.
   */
   let repaired = s
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
     .replace(/^\s*\[\s*/, "")
     .replace(/\s*\]\s*$/, "")
-    /* split between adjacent quoted list items */
+
+    /*
+      Proper quoted-item boundary:
+        "hello", "there"
+    */
     .replace(/["'`]\s*,\s*["'`]/g, "\n")
-    /* split explicit protocol separators */
+
+    /*
+      Dolphin occasionally forgets the comma:
+        "hello" "there"
+      It can also put the comma INSIDE the first string:
+        "hello," "there"
+      Splitting at adjacent closing/opening quotes repairs both.
+    */
+    .replace(/["'`]\s+["'`]/g, "\n")
+
+    /* explicit legacy protocol separators */
     .replace(/\|{1,3}/g, "\n")
     .replace(/\s+\/{1,3}\s+/g, "\n")
-    /* split a comma at line-end before the next quoted line */
-    .replace(/["'`]\s*,\s*\r?\n\s*["'`]/g, "\n");
+
+    /* multiline quoted-item boundary */
+    .replace(/["'`]\s*,?\s*\r?\n\s*["'`]/g, "\n");
 
   let parts = repaired
     .split(/\r?\n+/)
+    .flatMap((v) =>
+      /*
+        Last-chance repair for an adjacent quote boundary that survived due
+        to odd spacing. This turns:
+          oh yeah different," "but i...
+        into two clean bubbles.
+      */
+      String(v).split(/["'`]\s+["'`]/)
+    )
     .map((v) => cleanProtocolDebris(v))
     .filter(Boolean);
 
@@ -3067,7 +3111,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v6 Dolphin · Dolphin 3 for normal chats, Qwen 4B for photo turns.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v7 Clean Punctuation · Dolphin 3 for chats, Qwen 4B for photos.</p>
 
           <label className="fieldlabel">Text / dating model</label>
           <input
