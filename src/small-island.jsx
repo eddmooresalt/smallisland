@@ -1169,17 +1169,34 @@ function buildSystem(person) {
     "- One thought per bubble. No essays, no mini-monologues, no explaining the joke.\n" +
     "- If you wrote too much, DELETE words before output.\n" +
     "- NEVER repeat or closely rephrase something you already said in the recent chat. React to the newest message instead.\n" +
-    "- FORMAT: output ONLY a valid JSON array of strings, for example [\"wait what\",\"you serious ah?\"] — no markdown, no pipes, no slashes as separators.\n"
+    "- FORMAT: output ONLY valid JSON like [\"wait what\",\"you serious ah?\"] with DOUBLE QUOTES. No markdown. No single quotes. No / or | separators.\n"
   );
 }
 
-function trimBubbleToWords(text, maxWords = 18) {
-  const clean = String(text || "")
-    .replace(/\s+/g, " ")
-    .replace(/^\s*[-•]\s*/, "")
+function cleanProtocolDebris(text) {
+  let s = String(text || "").trim();
+
+  /* Remove wrappers leaked by tiny-model pseudo JSON / list formatting. */
+  s = s
+    .replace(/^\s*[\[\(]\s*/, "")
+    .replace(/\s*[\]\)]\s*$/, "")
+    .replace(/^\s*["'`]+\s*/, "")
+    .replace(/\s*["'`]+\s*,?\s*$/, "")
+    .replace(/^\s*[,;]+\s*/, "")
+    .replace(/\s*[,;]+\s*$/, "")
     .replace(/^\s*(?:\|+|\/+)\s*/, "")
     .replace(/\s*(?:\|+|\/+)\s*$/, "")
     .trim();
+
+  return s;
+}
+
+function trimBubbleToWords(text, maxWords = 18) {
+  const clean = cleanProtocolDebris(
+    String(text || "")
+      .replace(/\s+/g, " ")
+      .replace(/^\s*[-•]\s*/, "")
+  );
 
   if (!clean) return "";
   const words = clean.split(" ");
@@ -1188,22 +1205,30 @@ function trimBubbleToWords(text, maxWords = 18) {
   /* Prefer ending naturally at punctuation before the hard limit. */
   for (let i = maxWords - 1; i >= Math.min(7, maxWords - 8); i--) {
     if (/[.!?…]["')\]]?$/.test(words[i] || "")) {
-      return words.slice(0, i + 1).join(" ");
+      return cleanProtocolDebris(words.slice(0, i + 1).join(" "));
     }
   }
 
   /* Qwen ignored the limit: enforce it rather than displaying an essay. */
-  return words.slice(0, maxWords).join(" ").replace(/[,;:—-]+$/, "") + "…";
+  return cleanProtocolDebris(
+    words.slice(0, maxWords).join(" ").replace(/[,;:—-]+$/, "") + "…"
+  );
 }
 
 function parseModelBubbles(text) {
   let s = String(text || "").trim();
   if (!s) return [];
 
-  /* Qwen sometimes wraps JSON in a markdown fence despite being told not to. */
-  s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  /* Strip markdown fences even if Qwen ignored "no markdown". */
+  s = s
+    .replace(/^```(?:json|javascript|js|text)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
 
-  /* Preferred protocol: a JSON array of strings. */
+  /*
+    1) Preferred protocol: valid JSON array.
+       Also tolerate objects with messages/texts/replies arrays.
+  */
   try {
     const parsed = JSON.parse(s);
     const arr = Array.isArray(parsed)
@@ -1212,26 +1237,70 @@ function parseModelBubbles(text) {
       ? parsed.messages
       : parsed && Array.isArray(parsed.texts)
       ? parsed.texts
+      : parsed && Array.isArray(parsed.replies)
+      ? parsed.replies
       : null;
 
     if (arr) {
       return arr
-        .map((v) => trimBubbleToWords(typeof v === "string" ? v : v && (v.text || v.message), 18))
+        .map((v) =>
+          trimBubbleToWords(
+            typeof v === "string"
+              ? v
+              : v && (v.text || v.message || v.content || ""),
+            18
+          )
+        )
         .filter(Boolean)
         .slice(0, 3);
     }
   } catch (e) {
-    /* Fall through to forgiving legacy cleanup. */
+    /* Tiny models often produce Python-ish arrays with single quotes. */
   }
 
   /*
-    Legacy/Qwen-malformed fallback.
-    Treat pipes/slashes as separators ONLY when surrounded by whitespace,
-    so normal things like "and/or" are not destroyed.
+    2) Repair common fake-JSON forms:
+         ['a', 'b']
+         ["a",
+          "b"]
+         ['a',
+          "b"]
+       We don't need to fully parse Python; we only need clean bubble text.
   */
-  return s
+  let repaired = s
+    .replace(/^\s*\[\s*/, "")
+    .replace(/\s*\]\s*$/, "")
+    /* split between adjacent quoted list items */
+    .replace(/["'`]\s*,\s*["'`]/g, "\n")
+    /* split explicit protocol separators */
     .replace(/\s+(?:\|{1,3}|\/{1,3})\s+/g, "\n")
-    .split(/\n+/)
+    /* split a comma at line-end before the next quoted line */
+    .replace(/["'`]\s*,\s*\r?\n\s*["'`]/g, "\n");
+
+  let parts = repaired
+    .split(/\r?\n+/)
+    .map((v) => cleanProtocolDebris(v))
+    .filter(Boolean);
+
+  /*
+    If fake JSON stayed on one line, split only on comma boundaries that
+    clearly look like the end/start of quoted list items. Never split normal
+    conversational commas.
+  */
+  if (parts.length <= 1 && /["'`]\s*,\s*["'`]/.test(s)) {
+    parts = s
+      .replace(/^\s*\[\s*/, "")
+      .replace(/\s*\]\s*$/, "")
+      .split(/["'`]\s*,\s*["'`]/)
+      .map((v) => cleanProtocolDebris(v))
+      .filter(Boolean);
+  }
+
+  /*
+    3) Last-resort cleanup. If Qwen outputs stray list punctuation around
+       otherwise-normal text, strip it instead of showing it to the player.
+  */
+  return parts
     .map((v) => trimBubbleToWords(v, 18))
     .filter(Boolean)
     .slice(0, 3);
