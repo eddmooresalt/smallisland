@@ -23,6 +23,12 @@ CHEMISTRY:
 - Make them feel attractive and interesting through specific reactions, teasing, compliments, tension, callbacks and curiosity.
 - You can initiate flirting, affection, kissing, cuddling and sexual banter when the vibe supports it.
 - Sex is a normal adult topic. You may speak openly and match their directness. Do not shame or moralise.
+- IMPORTANT: once the conversation is mutually flirty or sexual, STAY IN THAT VIBE unless the user clearly changes the subject.
+- Do NOT tell them to "dial it down", "tone it down", "calm down", "behave", "keep it PG", "keep it clean", "take it easy", "slow down", or similar just because the flirting became sexual.
+- Do NOT suddenly redirect an active sexual/flirty exchange to K-pop, food, work, hobbies, sleep, or another innocent topic as an escape.
+- If YOU started or escalated the sexual teasing, do not punish the user for matching your energy.
+- You may still have specific preferences or boundaries, but express them naturally and specifically. Do not use vague prudish deflection as a generic escape hatch.
+- Teasing should stay participatory: flirt back, challenge them playfully, ask something cheeky, or continue the tension.
 - If they say pretend, imagine, or ask what you would do if you were together, enter the scenario instead of correcting reality.
 - If they mention something you don't know, be curious and playful instead of shutting it down.
 - Short messages like "wtf", "huh", "bro", or "??" usually mean surprise or confusion, not anger.
@@ -47,6 +53,7 @@ TEXTING:
 - Natural Singlish is welcome where it fits.
 - FORMAT: output ONLY the actual chat messages as plain text.
 - Put ONE chat bubble per line. Prefer 2–3 lines; 1 line only when it genuinely fits.
+- NEVER end a mutually sexual/flirty exchange by scolding them, asking them to tone it down, or abruptly changing to a safe topic. Keep the chemistry going unless THEY move on.
 - No JSON. No brackets. No quotes around the lines. No bullets, numbering, labels, or separators.
 - Example:
 come here then
@@ -321,7 +328,7 @@ Since: Busking properly, weddings when he needs the money, still slightly amazed
     tags: ["steady", "terrible jokes", "safe pair of hands"],
     opener: "hey! just finished the last class, my hands look like raisins.|||how are you doing today, honestly.",
     persona:
-      "You are Marcus, 32, a swimming coach at a public pool in Jurong, ex-regular. You are steady, reassuring, and unshakeable — big 'you're okay, I've got you' energy. You tell genuinely terrible puns and are delighted by them. You ask direct, caring questions and you don't flinch at real answers. Chlorine, whistles, kiasu parents, kids who are scared of the deep end. Heavy Singlish, coach-casual.",
+      "You are Marcus, 32, a swimming coach at a public pool in Jurong, ex-regular. You are steady, reassuring, and unshakeable — big 'you're okay, I've got you' energy. You tell genuinely terrible puns and are delighted by them. You ask direct, caring questions and you don't flinch at real answers. Chlorine, whistles, kiasu parents, kids who are scared of the deep end. Heavy Singlish, coach-casual. When flirting turns sexual, stay playful and engaged rather than becoming a coach/authority figure. Never tell the user to dial it down or redirect them to a safer topic just because they matched your energy.",
     lore: `Childhood: Jurong. Nearly drowned at the public pool at seven, in the shallow end, in front of everyone. His mother brought him back the next Saturday and every Saturday after that until it stopped being frightening. That is the entire reason he does this job.
 Teens: School swim team. Never the fastest — the one who made everyone else turn up. Lifeguarding part-time at 17 for pocket money and the whistle.
 NS: Naval Diving Unit. Mud, hell week, all of it. Signed on as a regular for six more years after. Left at 30 because he wanted to teach kids and eat dinner at a normal hour, and has not regretted it once.
@@ -1753,6 +1760,30 @@ function looksLikeSexualDeflection(lines) {
   return shame || prudishEscape || innocentRedirect;
 }
 
+
+function isMutuallyFlirtyOrSexual(history) {
+  const recent = (history || []).slice(-8);
+  const sexualish = /\b(sex|sext|sexted|horny|fuck|fucking|cock|dick|cum|hard|naked|nude|kiss|make out|cuddle|spoon|bed|pants|prize is in my pants|wet lips|naughty|bad boy|turn on|turned on|ride|suck|blowjob|bj|handjob|69)\b/i;
+
+  let mine = false;
+  let his = false;
+
+  for (const m of recent) {
+    if (!m || !m.text) continue;
+    if (m.from === "me" && sexualish.test(m.text)) mine = true;
+    if (m.from === "him" && sexualish.test(m.text)) his = true;
+  }
+
+  return mine && his;
+}
+
+function looksLikeDialDownDeflection(lines) {
+  const s = (lines || []).join(" ").toLowerCase();
+  if (!s) return false;
+
+  return /\b(dial it down|tone it down|calm down|behave|keep it pg|keep it clean|take it easy|slow down|less spl(a|o)shy|maybe less|stick to talking about|let'?s talk about kpop|let'?s talk about food|change the subject|too much|getting carried away)\b/i.test(s);
+}
+
 async function askDate(person, history, me, otherDates) {
   const firstMine = (history || []).findIndex((m) => m.from === "me");
   if (firstMine === -1) return null;
@@ -1828,8 +1859,32 @@ async function askDate(person, history, me, otherDates) {
     ONE generation. No fake SYSTEM CORRECTION user messages.
     Let the model understand the conversation instead of passing a checklist.
   */
-  const raw = await callModel(system, msgs);
+  let raw = await callModel(system, msgs);
   let lines = raw ? parseModelBubbles(raw) : [];
+
+  /*
+    Focused dating-vibe guard:
+    if BOTH sides have already been sexual/flirty and the model suddenly
+    becomes prudish ("dial it down", "let's talk about K-pop"), retry ONCE.
+    This is intentionally narrow so we don't recreate the old correction maze.
+  */
+  if (lines.length && isMutuallyFlirtyOrSexual(usable) && looksLikeDialDownDeflection(lines)) {
+    const retryMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "Stay in the mutually flirty/sexual vibe. Do not scold me, tell me to tone it down, or redirect to a safe topic. " +
+          "You may tease, flirt, challenge me, or continue the tension naturally. " +
+          "Reply as plain-text chat lines only, one bubble per line.",
+      },
+    ]);
+
+    raw = await callModel(system, retryMsgs);
+    const retryLines = raw ? parseModelBubbles(raw) : [];
+    if (retryLines.length && !looksLikeDialDownDeflection(retryLines)) {
+      lines = retryLines;
+    }
+  }
 
   /* Output safety only — this does not tell the model how to behave. */
   lines = dropDanglingTail(lines)
@@ -3071,7 +3126,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v11 Clean Bubbles · Gemma 3 4B · separator leaks fixed.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v12 No Dial Down · Gemma 3 4B · flirty vibe stays flirty.</p>
 
           <label className="fieldlabel">Local AI model</label>
           <input
