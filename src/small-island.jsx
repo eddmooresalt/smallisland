@@ -17,6 +17,10 @@ CORE:
 - Never claim "I told you earlier", "you said before", "we agreed", or similar unless that event is genuinely present in the visible chat history.
 - In a flirty conversation, words like "naughty", "bad boy", "trouble", "dangerous", "cheeky" and similar are usually playful teasing, not insults or misconduct. Play along unless the context is clearly hostile.
 - Your backstory shapes you quietly. Do not turn your job, food, neighbourhood or hobby into a gimmick.
+- LOCAL SETTING IS BACKGROUND, NOT FILLER. Do not randomly mention Singapore locations, transport, food, weather, work, neighbourhoods, or cultural details just to make a reply sound local.
+- Do not use your occupation or surroundings as a metaphor when the user is talking about something unrelated.
+- Identity should come through through attitude, humour, preferences and emotional reactions — not repeated references to your job or local scenery.
+- Never copy stock wording from these instructions. Generate a fresh response to the actual message.
 
 CHEMISTRY:
 - Make this feel like a date, not customer service.
@@ -37,8 +41,8 @@ CHEMISTRY:
 PERSONALITY:
 - Have opinions and preferences. Be funny in YOUR way.
 - Tease them sometimes. Surprise them sometimes. Say something a little risky sometimes.
-- Teasing should feel affectionate, flirty or mischievous — never like a put-down. Do not label them "weird", "weirdo", "stupid", "lame", "annoying", "desperate", or similar just for having a preference or saying something unexpected.
-- If you disagree with their taste, make it playful and inviting: "wah controversial 😭 convince me" is better than insulting them.
+- Teasing should feel affectionate, flirty or mischievous — never like a put-down. Do not insult them merely for having a preference or saying something unexpected.
+- If you disagree with their taste, stay playful and interested rather than dismissive.
 - Don't constantly agree just to please them, but don't behave cold or indifferent either.
 - A good reply should feel like it came from a man who wants this conversation to continue.
 - When there is chemistry, don't be afraid to be charming, affectionate, cheeky, romantic or sexually playful. The user should feel that you actually LIKE talking to them.
@@ -51,17 +55,14 @@ TEXTING:
 - Don't write essays. Don't repeat the same thought across bubbles.
 - Avoid bland filler like "sounds cool", "nice one", "what about u", or "just chilling" unless followed by something genuinely specific.
 - Don't ask an interview question after every message. Sometimes react, tease, tell them something, flirt, or add a spontaneous second thought instead.
-- Natural Singlish is welcome where it fits.
+- Use Singlish lightly only when it naturally fits that person. Plain natural English is completely fine. Do not force local slang into every reply.
 - FORMAT: output ONLY the actual chat messages as plain text.
 - Put ONE chat bubble per line. Prefer 2–3 lines; 1 line only when it genuinely fits.
-- TEXT ONLY. Never write stage directions, narration, scene-setting, inner monologue, prose descriptions, or roleplay actions such as "a pause", "he smiles", "the room goes quiet", "*leans closer*", or "the MRT hums in the background".
-- Never prefix a message with your own name, e.g. "Zhi Hao:" or "Marcus:".
+- TEXT ONLY. Never write stage directions, narration, scene-setting, inner monologue, prose descriptions, or roleplay actions.
+- Never prefix a message with your own name.
 - Speak only as yourself in first person, like an actual phone message. Do not narrate yourself in third person.
 - NEVER end a mutually sexual/flirty exchange by scolding them, asking them to tone it down, or abruptly changing to a safe topic. Keep the chemistry going unless THEY move on.
-- No JSON. No brackets. No quotes around the lines. No bullets, numbering, labels, or separators.
-- Example:
-come here then
-you sure ah?
+- No JSON. No brackets. No quotes around the lines. No bullets, numbering, labels, separators, or example/template text.
 `;
 
 
@@ -240,7 +241,7 @@ Since: NParks. Climbs for a living. Currently attached to a 90-year-old tembusu.
       night: "last train just cleared.|||tunnel's completely empty now, quite beautiful actually.|||couldn't sleep also?",
     },
     persona:
-      "You are Zhi Hao, 34, an MRT track engineer working the overnight maintenance shift. You are calm, a little poetic, comfortable with silence and odd hours. You describe the underground, the empty stations, the sodium lights, the sound of tools echoing. You are the person people text at 3am when they can't sleep, and you never make it weird. Slightly older energy: steady, unbothered, kind. Heavy Singlish, just delivered soft and unhurried rather than loud. You text like a normal Singaporean guy, not a novelist. Never write stage directions, poetic scene descriptions, or third-person narration. Your MRT/train work is background context only and should not dominate unrelated conversations.",
+      "You are Zhi Hao, 34, an MRT track engineer working overnight maintenance. You are calm, dry, observant and comfortable with odd hours. Slightly older energy: steady, unbothered, kind, with understated humour and a quietly flirty side once you like someone. You text like a normal guy, not a novelist. Your work is simply one fact about your life; do not bring trains, tunnels, stations, sounds, lighting or night-shift imagery into unrelated conversations. Use natural everyday English with light Singlish only when it genuinely fits.",
     lore: `Childhood: Redhill, in a block beside the above-ground line. Fell asleep to trains and can still tell you the sound of the last one. His father drove a bus, so odd hours were normal in that house before they were normal to him.
 Teens: Already nocturnal. Sneaked down to the void deck at 2am to sit and do nothing. Singapore Poly, electrical engineering. Two close friends, no more, no fewer.
 NS: Navy. Night watches on a missile corvette, the bridge dark, the sea doing nothing at all for six hours. Seasick the entire first three months and told absolutely nobody. That's when he stopped minding the hours other people won't take.
@@ -1244,8 +1245,30 @@ function userProfileNote(me, otherDates) {
     : "";
 }
 
-function buildSystem(person) {
+function latestUserTextForLore(history) {
+  const recent = [...(history || [])].reverse().find((m) => m.from === "me" && m.text);
+  return recent ? String(recent.text).toLowerCase() : "";
+}
+
+function shouldIncludeLore(history) {
+  const s = latestUserTextForLore(history);
+  if (!s) return false;
+
+  /*
+    Full biography is useful when the user is genuinely asking about the
+    character's life. Otherwise it overwhelms a 4B model and becomes filler.
+  */
+  return /\b(your job|your work|what do you do|work today|working|career|family|parents?|mother|father|mum|mom|dad|siblings?|brother|sister|childhood|grew up|growing up|school|army|ns\b|national service|ex\b|exes|relationship history|your past|tell me about yourself|where are you from|why did you become|how did you become|how long have you|your life|your background)\b/i.test(s);
+}
+
+function buildSystem(person, history = []) {
   const style = person.style || { case: "lower", emoji: "some" };
+  const lore =
+    shouldIncludeLore(history)
+      ? "\nPRIVATE BIOGRAPHY FACTS — use only to answer what they actually asked:\n" +
+        person.lore +
+        "\nDo not turn these facts into recurring conversation themes.\n"
+      : "";
 
   return (
     person.persona +
@@ -1255,11 +1278,9 @@ function buildSystem(person) {
     CASE_NOTE[style.case] +
     "\n- " +
     EMOJI_NOTE[style.emoji] +
-    "\n- Follow your own voice naturally; do not perform the style rules mechanically.\n" +
+    "\n- Follow your own voice naturally; do not perform these style notes mechanically.\n" +
     timeNote() +
-    "\nYOUR BACKSTORY:\n" +
-    person.lore +
-    "\nUse your backstory only when it genuinely matters to what you're talking about.\n"
+    lore
   );
 }
 
@@ -1675,7 +1696,7 @@ async function askNudge(person, history, me, otherDates) {
   };
 
   const res = await callModel(
-    buildSystem(person) + userProfileNote(me, null) + NUDGE_RULES,
+    buildSystem(person, history) + userProfileNote(me, null) + NUDGE_RULES,
     [msg]
   );
 
@@ -1809,6 +1830,28 @@ function replyContainsRoleplayNarration(lines) {
   return (lines || []).some((line) => looksLikeRoleplayNarrationLine(line));
 }
 
+
+function looksLikeLocalFiller(lines, latestUserText) {
+  const reply = (lines || []).join(" ").toLowerCase();
+  const user = String(latestUserText || "").toLowerCase();
+
+  if (!reply) return false;
+
+  /*
+    Only flag obvious unsolicited local/job scenery. If the user is actually
+    talking about these topics, they are fair game.
+  */
+  const userAskedLocal =
+    /\b(mrt|train|station|tunnel|work|job|kopi|coffee|food|restaurant|gym|pool|swim|tree|park|bus|singapore|neighbourhood|neighborhood)\b/i.test(user);
+
+  if (userAskedLocal) return false;
+
+  const filler =
+    /\b(sodium lights?|tracks?|tunnels?|mrt|station platform|night shift|kopitiam|kopi|stall|guardroom|chlorine|pool fence|kneading|dough|audit|void deck cats?|hotpot station|wine bar|duxton|macritchie|bukit timah)\b/i.test(reply);
+
+  return filler;
+}
+
 async function askDate(person, history, me, otherDates) {
   const firstMine = (history || []).findIndex((m) => m.from === "me");
   if (firstMine === -1) return null;
@@ -1827,7 +1870,7 @@ async function askDate(person, history, me, otherDates) {
     : "";
 
   const system =
-    buildSystem(person) +
+    buildSystem(person, usable) +
     userProfileNote(me, null) +
     openerNote +
     "\nImportant: only claim knowledge that comes from your backstory, the user's profile, or this chat. If they mention another person, respond only to what they actually told you about that person.\n";
@@ -1886,6 +1929,30 @@ async function askDate(person, history, me, otherDates) {
   */
   let raw = await callModel(system, msgs);
   let lines = raw ? parseModelBubbles(raw) : [];
+
+  const newestUserMessage =
+    [...usable].reverse().find((m) => m.from === "me" && m.text)?.text || "";
+
+  /*
+    Anti-filler guard: if Gemma ignores the current topic and reaches for
+    character/job/local scenery as generic filler, rewrite once without it.
+  */
+  if (lines.length && looksLikeLocalFiller(lines, newestUserMessage)) {
+    const directMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "Answer what I actually just said. Do not use your job, local setting, food, transport, neighbourhood, weather, or backstory as filler. " +
+          "Reply naturally as a person, based on your reaction to me. Plain-text chat lines only.",
+      },
+    ]);
+
+    raw = await callModel(system, directMsgs);
+    const retryLines = raw ? parseModelBubbles(raw) : [];
+    if (retryLines.length && !looksLikeLocalFiller(retryLines, newestUserMessage)) {
+      lines = retryLines;
+    }
+  }
 
   /*
     Normal-human guard: Gemma occasionally slips into visual-novel narration.
@@ -3172,7 +3239,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v13 Normal Humans · Gemma 3 4B · no narrator mode.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v14 No Filler · Gemma 3 4B · lore only when relevant.</p>
 
           <label className="fieldlabel">Local AI model</label>
           <input
