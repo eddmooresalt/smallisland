@@ -931,34 +931,19 @@ function explainOllamaFailure(err) {
 }
 
 /* one door to the model */
-async function callModel(system, msgs) {
-  /* Preserve the old Claude-artifact behaviour when opened there. */
-  if (IN_CLAUDE) {
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system, messages: toAnthropicMessages(msgs) }),
-      });
-      if (!res.ok) throw new Error("bad response " + res.status);
-      const data = await res.json();
-      const text = (data.content || [])
-        .map((b) => (b.type === "text" ? b.text : ""))
-        .filter(Boolean)
-        .join("\n")
-        .trim();
-      return text || null;
-    } catch (err) {
-      return null;
-    }
-  }
+let ollamaRequestQueue = Promise.resolve();
 
-  let timeoutId = null;
+function sleepMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function callModelOnce(system, msgs) {
+  const cfg = readConfig();
+  const base = (cfg.ollamaBase || DEFAULT_CONFIG.ollamaBase).replace(/\/+$/, "");
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
+
   try {
-    const cfg = readConfig();
-    const base = (cfg.ollamaBase || DEFAULT_CONFIG.ollamaBase).replace(/\/+$/, "");
-    const controller = new AbortController();
-    timeoutId = setTimeout(() => controller.abort(), 120000);
     const res = await fetch(base + "/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -976,23 +961,115 @@ async function callModel(system, msgs) {
         },
       }),
     });
-    const data = await res.json().catch(() => null);
+
+    const rawText = await res.text();
+    let data = null;
+    try {
+      data = rawText ? JSON.parse(rawText) : null;
+    } catch (e) {
+      data = null;
+    }
+
     if (!res.ok) {
-      const detail = data && (data.error || data.message);
-      throw new Error("Ollama response " + res.status + (detail ? ": " + detail : ""));
+      const detail =
+        (data && (data.error || data.message)) ||
+        rawText ||
+        "no response detail";
+      const err = new Error(
+        "Ollama HTTP " + res.status + ": " + String(detail).slice(0, 280)
+      );
+      err.status = res.status;
+      throw err;
     }
-    const text = data && data.message && data.message.content;
-    return typeof text === "string" && text.trim() ? text.trim() : null;
-  } catch (err) {
-    if (err && err.name === "AbortError") {
-      liveWarning("Local Qwen took more than 2 minutes to answer. Small Island used a backup reply this time. If this keeps happening, a smaller Ollama model will feel much faster.");
-    } else {
-      explainOllamaFailure(err);
-    }
-    return null;
+
+    const answer = data && data.message && data.message.content;
+    return typeof answer === "string" && answer.trim() ? answer.trim() : null;
   } finally {
-    if (timeoutId) clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
   }
+}
+
+async function callModel(system, msgs) {
+  /* Preserve the old Claude-artifact behaviour when opened there. */
+  if (IN_CLAUDE) {
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          system,
+          messages: toAnthropicMessages(msgs),
+        }),
+      });
+      if (!res.ok) throw new Error("bad response " + res.status);
+      const data = await res.json();
+      const out = (data.content || [])
+        .map((b) => (b.type === "text" ? b.text : ""))
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+      return out || null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  /*
+    Your local GPU is one shared resource. Serialize model calls so a chat
+    response, a nudge, and an automatic retry cannot all hit Ollama at once.
+  */
+  const run = async () => {
+    let lastErr = null;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        return await callModelOnce(system, msgs);
+      } catch (err) {
+        lastErr = err;
+
+        if (err && err.name === "AbortError") break;
+
+        const status = Number(err && err.status);
+        const retryable =
+          !status || status === 429 || status === 500 || status === 502 ||
+          status === 503 || status === 504;
+
+        if (!retryable || attempt === 2) break;
+
+        /* Give Ollama/bridge/GPU a moment to recover before one retry. */
+        await sleepMs(1200);
+      }
+    }
+
+    if (lastErr && lastErr.name === "AbortError") {
+      liveWarning(
+        "Qwen took more than 2 minutes to answer. Small Island used a backup reply this time."
+      );
+    } else {
+      const detail = lastErr && lastErr.message
+        ? lastErr.message
+        : "Unknown Ollama error";
+      liveWarning(
+        "Ollama failed after one retry: " +
+          detail +
+          ". Scripted backup is filling in this turn."
+      );
+    }
+
+    return null;
+  };
+
+  const queued = ollamaRequestQueue.then(run, run);
+
+  /* Keep the queue alive even when this individual request fails. */
+  ollamaRequestQueue = queued.then(
+    () => undefined,
+    () => undefined
+  );
+
+  return queued;
 }
 
 /* ============================================================
@@ -1304,7 +1381,8 @@ function parseModelBubbles(text) {
     /* split between adjacent quoted list items */
     .replace(/["'`]\s*,\s*["'`]/g, "\n")
     /* split explicit protocol separators */
-    .replace(/\s+(?:\|{1,3}|\/{1,3})\s+/g, "\n")
+    .replace(/\|{1,3}/g, "\n")
+    .replace(/\s+\/{1,3}\s+/g, "\n")
     /* split a comma at line-end before the next quoted line */
     .replace(/["'`]\s*,\s*\r?\n\s*["'`]/g, "\n");
 
