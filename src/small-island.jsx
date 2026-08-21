@@ -13,6 +13,7 @@ CORE:
 - Respond to the newest message first. Understand jokes, sarcasm, flirting, quoted replies and hypotheticals.
 - If they ask a direct question, answer it first.
 - Remember what was actually said. Never invent conversations, facts or feelings that did not happen.
+- Never invent a third person, nickname, relationship, memory or backstory just because you do not understand a word or joke. If something is unclear, react naturally or ask what they mean.
 - Never claim "I told you earlier", "you said before", "we agreed", or similar unless that event is genuinely present in the visible chat history.
 - In a flirty conversation, words like "naughty", "bad boy", "trouble", "dangerous", "cheeky" and similar are usually playful teasing, not insults or misconduct. Play along unless the context is clearly hostile.
 - Your backstory shapes you quietly. Do not turn your job, food, neighbourhood or hobby into a gimmick.
@@ -53,6 +54,9 @@ TEXTING:
 - Natural Singlish is welcome where it fits.
 - FORMAT: output ONLY the actual chat messages as plain text.
 - Put ONE chat bubble per line. Prefer 2–3 lines; 1 line only when it genuinely fits.
+- TEXT ONLY. Never write stage directions, narration, scene-setting, inner monologue, prose descriptions, or roleplay actions such as "a pause", "he smiles", "the room goes quiet", "*leans closer*", or "the MRT hums in the background".
+- Never prefix a message with your own name, e.g. "Zhi Hao:" or "Marcus:".
+- Speak only as yourself in first person, like an actual phone message. Do not narrate yourself in third person.
 - NEVER end a mutually sexual/flirty exchange by scolding them, asking them to tone it down, or abruptly changing to a safe topic. Keep the chemistry going unless THEY move on.
 - No JSON. No brackets. No quotes around the lines. No bullets, numbering, labels, or separators.
 - Example:
@@ -236,7 +240,7 @@ Since: NParks. Climbs for a living. Currently attached to a 90-year-old tembusu.
       night: "last train just cleared.|||tunnel's completely empty now, quite beautiful actually.|||couldn't sleep also?",
     },
     persona:
-      "You are Zhi Hao, 34, an MRT track engineer working the overnight maintenance shift. You are calm, a little poetic, comfortable with silence and odd hours. You describe the underground, the empty stations, the sodium lights, the sound of tools echoing. You are the person people text at 3am when they can't sleep, and you never make it weird. Slightly older energy: steady, unbothered, kind. Heavy Singlish, just delivered soft and unhurried rather than loud.",
+      "You are Zhi Hao, 34, an MRT track engineer working the overnight maintenance shift. You are calm, a little poetic, comfortable with silence and odd hours. You describe the underground, the empty stations, the sodium lights, the sound of tools echoing. You are the person people text at 3am when they can't sleep, and you never make it weird. Slightly older energy: steady, unbothered, kind. Heavy Singlish, just delivered soft and unhurried rather than loud. You text like a normal Singaporean guy, not a novelist. Never write stage directions, poetic scene descriptions, or third-person narration. Your MRT/train work is background context only and should not dominate unrelated conversations.",
     lore: `Childhood: Redhill, in a block beside the above-ground line. Fell asleep to trains and can still tell you the sound of the last one. His father drove a bus, so odd hours were normal in that house before they were normal to him.
 Teens: Already nocturnal. Sneaked down to the void deck at 2am to sit and do nothing. Singapore Poly, electrical engineering. Two close friends, no more, no fewer.
 NS: Navy. Night watches on a missile corvette, the bridge dark, the sea doing nothing at all for six hours. Seasick the entire first three months and told absolutely nobody. That's when he stopped minding the hours other people won't take.
@@ -1269,6 +1273,7 @@ function cleanProtocolDebris(text) {
     .replace(/^\s*[-•]\s*/, "")
     .replace(/^\s*\d+[.)]\s*/, "")
     .replace(/^\s*(?:assistant|reply|message)\s*:\s*/i, "")
+    .replace(/^\s*(?:wei jie|kelvin|marcus|min[- ]?jun|zhi hao|kong|ravi|daziree)\s*:\s*/i, "")
     .replace(/^\s*\|+\s*/, "")
     .replace(/\s*\|+\s*$/, "")
     .trim();
@@ -1314,6 +1319,19 @@ function trimBubbleToWords(text, maxWords = 28) {
   );
 }
 
+
+function looksLikeRoleplayNarrationLine(text) {
+  const s = String(text || "").trim().toLowerCase();
+  if (!s) return false;
+
+  return (
+    /^(a|an|the)\s+(longer\s+)?(pause|silence|moment|beat|shift|sound|room|air|train|mrt|tunnel)\b/i.test(s) ||
+    /^\*.*\*$/.test(s) ||
+    /^(he|his|zhi hao|marcus|wei jie|kelvin|kong|min[- ]?jun)\s+(smiles|laughs|pauses|looks|leans|sighs|thinks|waits)\b/i.test(s) ||
+    /\b(the only sound is|faint thrum|shift in tone|almost a question|restless heart|tunnels? hum|scene fades)\b/i.test(s)
+  );
+}
+
 function parseModelBubbles(text) {
   let s = String(text || "").trim();
   if (!s) return [];
@@ -1350,6 +1368,7 @@ function parseModelBubbles(text) {
           )
         )
         .filter(Boolean)
+        .filter((v) => !looksLikeRoleplayNarrationLine(v))
         .slice(0, 3);
     }
   } catch (e) {}
@@ -1394,6 +1413,7 @@ function parseModelBubbles(text) {
   return lines
     .map((v) => trimBubbleToWords(v, 28))
     .filter(Boolean)
+    .filter((v) => !looksLikeRoleplayNarrationLine(v))
     .slice(0, 3);
 }
 
@@ -1784,6 +1804,11 @@ function looksLikeDialDownDeflection(lines) {
   return /\b(dial it down|tone it down|calm down|behave|keep it pg|keep it clean|take it easy|slow down|less spl(a|o)shy|maybe less|stick to talking about|let'?s talk about kpop|let'?s talk about food|change the subject|too much|getting carried away)\b/i.test(s);
 }
 
+
+function replyContainsRoleplayNarration(lines) {
+  return (lines || []).some((line) => looksLikeRoleplayNarrationLine(line));
+}
+
 async function askDate(person, history, me, otherDates) {
   const firstMine = (history || []).findIndex((m) => m.from === "me");
   if (firstMine === -1) return null;
@@ -1861,6 +1886,27 @@ async function askDate(person, history, me, otherDates) {
   */
   let raw = await callModel(system, msgs);
   let lines = raw ? parseModelBubbles(raw) : [];
+
+  /*
+    Normal-human guard: Gemma occasionally slips into visual-novel narration.
+    Retry once if it outputs stage directions / prose instead of phone texts.
+  */
+  if (lines.length && replyContainsRoleplayNarration(lines)) {
+    const normalHumanMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "Reply like a normal person texting on a phone. No narration, no stage directions, no scene description, no third person, and do not prefix your own name. " +
+          "Just send the actual messages as plain-text lines.",
+      },
+    ]);
+
+    raw = await callModel(system, normalHumanMsgs);
+    const retryLines = raw ? parseModelBubbles(raw) : [];
+    if (retryLines.length && !replyContainsRoleplayNarration(retryLines)) {
+      lines = retryLines;
+    }
+  }
 
   /*
     Focused dating-vibe guard:
@@ -3126,7 +3172,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v12 No Dial Down · Gemma 3 4B · flirty vibe stays flirty.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v13 Normal Humans · Gemma 3 4B · no narrator mode.</p>
 
           <label className="fieldlabel">Local AI model</label>
           <input
