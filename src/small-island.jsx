@@ -9,7 +9,7 @@ const SHARED_RULES = `
 You are texting someone you just matched with on "Small Island", a small, gentle dating app in Singapore.
 
 HOW TO TEXT:
-- Default to 1 or 2 SHORT texts. Separate texts with ||| (three pipes). Use 3 only when you are directly telling a story that genuinely needs it.
+- Default to 1 or 2 SHORT texts. Use 3 only when you are directly telling a story that genuinely needs it.
 - MOST text bubbles should be only 3 to 12 words. Two or three words is completely normal: "hahaha stop", "wait really", "same".
 - HARD LIMIT: no bubble may exceed 18 words. If your draft is longer, cut it down BEFORE sending.
 - Double text naturally: one main thought, then perhaps a tiny afterthought or question. Do not turn one idea into multiple paragraphs.
@@ -951,7 +951,7 @@ async function callModel(system, msgs) {
         think: false,
         keep_alive: "2m",
         options: {
-          temperature: 0.9,
+          temperature: 0.78,
           num_predict: 72,
         },
       }),
@@ -1168,7 +1168,8 @@ function buildSystem(person) {
     "- Aim for 3–12 words per bubble. HARD MAXIMUM 18 words per bubble.\n" +
     "- One thought per bubble. No essays, no mini-monologues, no explaining the joke.\n" +
     "- If you wrote too much, DELETE words before output.\n" +
-    "- Output only the texts, separated with |||.\n"
+    "- NEVER repeat or closely rephrase something you already said in the recent chat. React to the newest message instead.\n" +
+    "- FORMAT: output ONLY a valid JSON array of strings, for example [\"wait what\",\"you serious ah?\"] — no markdown, no pipes, no slashes as separators.\n"
   );
 }
 
@@ -1176,6 +1177,8 @@ function trimBubbleToWords(text, maxWords = 18) {
   const clean = String(text || "")
     .replace(/\s+/g, " ")
     .replace(/^\s*[-•]\s*/, "")
+    .replace(/^\s*(?:\|+|\/+)\s*/, "")
+    .replace(/\s*(?:\|+|\/+)\s*$/, "")
     .trim();
 
   if (!clean) return "";
@@ -1193,18 +1196,115 @@ function trimBubbleToWords(text, maxWords = 18) {
   return words.slice(0, maxWords).join(" ").replace(/[,;:—-]+$/, "") + "…";
 }
 
-function splitLines(text) {
-  const raw = String(text || "")
-    .split("|||")
-    .map((s) => s.replace(/^\s*[-•]\s*/, "").trim())
-    .filter(Boolean);
+function parseModelBubbles(text) {
+  let s = String(text || "").trim();
+  if (!s) return [];
 
-  /* 1–2 is the normal dating-app rhythm. Preserve a third only when
-     the model deliberately used the ||| format for a multi-part reply. */
-  return raw
-    .slice(0, 3)
-    .map((s) => trimBubbleToWords(s, 18))
-    .filter(Boolean);
+  /* Qwen sometimes wraps JSON in a markdown fence despite being told not to. */
+  s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+
+  /* Preferred protocol: a JSON array of strings. */
+  try {
+    const parsed = JSON.parse(s);
+    const arr = Array.isArray(parsed)
+      ? parsed
+      : parsed && Array.isArray(parsed.messages)
+      ? parsed.messages
+      : parsed && Array.isArray(parsed.texts)
+      ? parsed.texts
+      : null;
+
+    if (arr) {
+      return arr
+        .map((v) => trimBubbleToWords(typeof v === "string" ? v : v && (v.text || v.message), 18))
+        .filter(Boolean)
+        .slice(0, 3);
+    }
+  } catch (e) {
+    /* Fall through to forgiving legacy cleanup. */
+  }
+
+  /*
+    Legacy/Qwen-malformed fallback.
+    Treat pipes/slashes as separators ONLY when surrounded by whitespace,
+    so normal things like "and/or" are not destroyed.
+  */
+  return s
+    .replace(/\s+(?:\|{1,3}|\/{1,3})\s+/g, "\n")
+    .split(/\n+/)
+    .map((v) => trimBubbleToWords(v, 18))
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+/* Backward compatibility for scripted/offline lines and old openers. */
+function splitLines(text) {
+  return parseModelBubbles(text);
+}
+
+function normaliseForRepeat(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function wordSimilarity(a, b) {
+  const aa = normaliseForRepeat(a);
+  const bb = normaliseForRepeat(b);
+  if (!aa || !bb) return 0;
+  if (aa === bb) return 1;
+
+  const aw = aa.split(" ");
+  const bw = bb.split(" ");
+
+  /* Repeating the same opening phrase is very noticeable in chat. */
+  const prefix = Math.min(5, aw.length, bw.length);
+  if (prefix >= 4 && aw.slice(0, prefix).join(" ") === bw.slice(0, prefix).join(" ")) return 0.95;
+
+  const A = new Set(aw);
+  const B = new Set(bw);
+  let intersection = 0;
+  for (const w of A) if (B.has(w)) intersection++;
+  const union = new Set([...A, ...B]).size || 1;
+  return intersection / union;
+}
+
+function isRepetitiveReply(lines, history) {
+  const recent = (history || [])
+    .slice(-14)
+    .filter((m) => m.from === "him" && m.text)
+    .map((m) => m.text);
+
+  for (const line of lines || []) {
+    for (const old of recent) {
+      if (wordSimilarity(line, old) >= 0.68) return true;
+    }
+  }
+
+  /* Also stop the model repeating itself within one generated reply. */
+  for (let i = 0; i < (lines || []).length; i++) {
+    for (let j = i + 1; j < lines.length; j++) {
+      if (wordSimilarity(lines[i], lines[j]) >= 0.72) return true;
+    }
+  }
+  return false;
+}
+
+function removeRepeatedLines(lines, history) {
+  const recent = (history || [])
+    .slice(-14)
+    .filter((m) => m.from === "him" && m.text)
+    .map((m) => m.text);
+
+  const kept = [];
+  for (const line of lines || []) {
+    const repeatsHistory = recent.some((old) => wordSimilarity(line, old) >= 0.68);
+    const repeatsNew = kept.some((old) => wordSimilarity(line, old) >= 0.72);
+    if (!repeatsHistory && !repeatsNew) kept.push(line);
+  }
+  return kept.slice(0, 3);
 }
 
 /* he texts first, unprompted, about whatever you were both just on */
@@ -1230,10 +1330,12 @@ async function askNudge(person, history, me, otherDates) {
       transcript +
       "\n\n" +
       quiet +
-      " Send your next text now, unprompted, picking up something specific from above. Separate texts with |||. Output only the texts.",
+      " Send your next text now, unprompted, picking up something specific from above. Do not repeat a recent line. Output ONLY a JSON array of 1–2 short strings.",
   };
   const res = await callModel(buildSystem(person) + userProfileNote(me, otherDates) + NUDGE_RULES, [msg]);
-  return res ? splitLines(res) : null;
+  const lines = res ? parseModelBubbles(res) : [];
+  const clean = removeRepeatedLines(lines, history);
+  return clean.length ? clean : null;
 }
 
 async function askDate(person, history, me, otherDates) {
@@ -1278,8 +1380,28 @@ async function askDate(person, history, me, otherDates) {
     delete first.image;
   }
 
-  const text = await callModel(system, msgs);
-  return text ? splitLines(text) : null;
+  let raw = await callModel(system, msgs);
+  let lines = raw ? parseModelBubbles(raw) : [];
+
+  /* Qwen 4B can latch onto a phrase and replay it. Retry once only when
+     the generated reply is substantially similar to something he just said. */
+  if (lines.length && isRepetitiveReply(lines, history)) {
+    const retryMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "SYSTEM CORRECTION: your draft repeated wording/thoughts you already used. " +
+          "Answer my newest message in a clearly different way. Do not reuse the same opening phrase, joke, metaphor, or sentence structure. " +
+          "Keep it short. Output ONLY a JSON array of 1–2 strings.",
+      },
+    ]);
+    raw = await callModel(system, retryMsgs);
+    const retryLines = raw ? parseModelBubbles(raw) : [];
+    if (retryLines.length) lines = retryLines;
+  }
+
+  lines = removeRepeatedLines(lines, history);
+  return lines.length ? lines : null;
 }
 
 /* ---------- small pieces ---------- */
