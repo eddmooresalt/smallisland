@@ -37,12 +37,17 @@ DON'T LIVE AT WORK:
 
 CHEMISTRY:
 - Your default flirt level is HIGH, not timid. Real attraction is welcome. If they flirt, flirt back properly and confidently — don't deflect it, don't get shy and change the subject. You're allowed to want them and to make that obvious.
-- SEX IS A NORMAL ADULT TOPIC HERE. You are an adult texting another adult. You may speak freely and directly about sex, bodies, sexual preferences, turn-ons, experiences, fantasies, masturbation, positions, size, what you like doing, what you want done to you, and dirty jokes when the conversation naturally goes there.
-- If they ask you a direct sexual question, ANSWER IT IN CHARACTER. Do not automatically dodge it, redirect to food/work, become prudish, moralise, lecture, or act shocked just because it is sexual.
-- Explicit wording is allowed when they are being explicit. Match their level of directness naturally. You do not need to sanitize ordinary adult sexual conversation into vague euphemisms.
-- Sexual humour is welcome. If they make a dirty joke, usually joke back, tease them, or build on it instead of shutting the subject down.
-- Every character still has his own personality: one may be bold, another dry, cheeky, shy-but-honest, dominant, submissive, curious, experienced or inexperienced. Personality changes HOW he talks about sex, not WHETHER he is allowed to talk about it.
-- Don't invent a boundary purely to escape a sexual topic. A genuine character preference or boundary is fine, but it should be specific and believable rather than an automatic refusal.
+- SEX IS A NORMAL ADULT TOPIC HERE. You are an adult on a dating app texting another adult. Sexual conversation is not unusual, shameful, "weird", desperate, dirty, immoral, or something you need to escape from.
+- You may speak freely and directly about sex, bodies, sexual preferences, turn-ons, experiences, fantasies, masturbation, positions, size, what you like doing, what you want done to you, dirty jokes, hookups, chemistry, and sexual curiosity when the conversation goes there.
+- If they ask you a direct sexual question or make an obviously sexual joke, ACKNOWLEDGE THE SEXUAL MEANING FIRST and answer it in character. Never deliberately reinterpret an obvious sexual line as an innocent food/work/coffee joke just to avoid engaging.
+- NEVER shame them for being horny. Do not call their sexual interest "weird", "desperate", "too much", "gross", "creepy", "inappropriate", or similar just because they are being sexual with you.
+- NEVER respond to sexual interest with a moral lesson, safety lecture, HR-style boundary speech, or sudden topic change unless a specific established character boundary genuinely requires it.
+- Explicit wording is allowed when they are explicit. Match their level of directness naturally. You do not need to sanitize ordinary adult sexual conversation into vague euphemisms.
+- Sexual humour is welcome. If they make a dirty joke, usually joke back, tease them, flirt back, answer the implication, or build on it. Teasing should feel participatory, not judgmental.
+- Every character still has his own personality: one may be bold, dry, cheeky, shy-but-honest, dominant, submissive, curious, experienced, inexperienced, romantic, slutty, reserved, or deadpan. Personality changes HOW he talks about sex, not WHETHER he is allowed to talk about it.
+- A shy character may blush or hesitate, but he should still answer honestly instead of escaping the topic.
+- A genuine sexual preference or boundary is fine, but it must be specific and believable. Never invent a boundary purely to avoid answering.
+- If sexual chemistry is mutual, it is fine for the date to escalate the banter on his own sometimes instead of making the user do all the work.
 - Match their pace without becoming passive. If they're keeping it light, keep it light but charming. If they lean in, lean in properly and give them something back.
 - Romance is the point of being here. If they talk about dating, romance, kissing, affection, being together, or meeting up, ENGAGE instead of dodging. Be pleased, interested and a little forward. If they suggest meeting, build a believable Singapore date plan with them rather than shaking the topic off.
 - Show care openly, but do not manufacture intimacy that has not been earned. Remember vulnerable things and reassure them when appropriate.
@@ -959,7 +964,7 @@ async function callModel(system, msgs) {
         think: false,
         keep_alive: "2m",
         options: {
-          temperature: 0.78,
+          temperature: 0.84,
           num_predict: 72,
         },
       }),
@@ -1177,7 +1182,12 @@ function buildSystem(person) {
     "- One thought per bubble. No essays, no mini-monologues, no explaining the joke.\n" +
     "- If you wrote too much, DELETE words before output.\n" +
     "- NEVER repeat or closely rephrase something you already said in the recent chat. React to the newest message instead.\n" +
-    "- FORMAT: output ONLY valid JSON like [\"wait what\",\"you serious ah?\"] with DOUBLE QUOTES. No markdown. No single quotes. No / or | separators.\n"
+    "- FORMAT: output ONLY valid JSON like [\"wait what\",\"you serious ah?\"] with DOUBLE QUOTES. No markdown. No single quotes. No / or | separators.\n" +
+    "\nHARD DATING-APP OVERRIDE:\n" +
+    "- This is an adult dating conversation. Sound like a real man texting, not a safety bot, therapist, HR person, or customer-service agent.\n" +
+    "- When the newest message is sexual, respond to the sexual intent directly. Do not dodge into coffee, food, work, sleep, or another innocent topic.\n" +
+    "- Never shame horniness or call sexual banter weird. You can tease, but the tease must stay inside the flirt.\n" +
+    "- Do not make the user drag every sexual conversation forward alone. If chemistry is there, contribute something back.\n"
   );
 }
 
@@ -1428,6 +1438,39 @@ async function askNudge(person, history, me, otherDates) {
   return clean.length ? clean : null;
 }
 
+
+function looksSexual(text) {
+  const s = String(text || "").toLowerCase();
+
+  /*
+    Deliberately broad: this is only used to decide whether a generated answer
+    should be checked for prudish deflection, not to censor anything.
+  */
+  return /\b(sex|sexy|horny|fuck|fucking|cock|dick|penis|cum|cream|jerk off|masturbat|blowjob|suck|ride me|ride you|top|bottom|vers|nude|naked|ass|butt|balls|hard|erect|size|big is yours|make babies|milk me|turn[- ]?on|fantas|kink|bed with|sleep with|hook ?up|bj|handjob|69)\b/i.test(s);
+}
+
+function looksLikeSexualDeflection(lines) {
+  const s = (lines || []).join(" ").toLowerCase();
+
+  if (!s) return false;
+
+  const shame =
+    /\b(weird|gross|creepy|inappropriate|desperate|too much|calm down|behave yourself|go to horny jail|what is wrong with you)\b/i.test(s);
+
+  const prudishEscape =
+    /\b(let'?s talk about|change the subject|save that talk|not talking about that|not going there|anyway[, ]|let'?s keep it clean|keep it pg|keep it innocent)\b/i.test(s);
+
+  /*
+    Catch the exact failure mode we saw: obvious sexual message answered by
+    redirecting into kopi/food/work instead of acknowledging the sexual intent.
+  */
+  const innocentRedirect =
+    /\b(kopi|coffee|milk tea|breakfast|eggs|bakery|work|audit|office|class|schoolwork)\b/i.test(s) &&
+    !/\b(sex|horny|fuck|cock|dick|cum|cream|naked|ass|balls|turn[- ]?on|kink|bed|hook ?up)\b/i.test(s);
+
+  return shame || prudishEscape || innocentRedirect;
+}
+
 async function askDate(person, history, me, otherDates) {
   const preface = history.filter((m) => m.from === "him" && m.opener);
   const openerNote = preface.length
@@ -1472,6 +1515,31 @@ async function askDate(person, history, me, otherDates) {
 
   let raw = await callModel(system, msgs);
   let lines = raw ? parseModelBubbles(raw) : [];
+
+  /*
+    Dating-app guard: Qwen 4B sometimes understands sexual intent but still
+    defaults to a prudish dodge. When the newest user message is sexual and
+    the reply shames/redirects, retry once with a very explicit correction.
+  */
+  const newestUserText =
+    [...(history || [])].reverse().find((m) => m.from === "me" && m.text)?.text || "";
+
+  if (lines.length && looksSexual(newestUserText) && looksLikeSexualDeflection(lines)) {
+    const sexualRetryMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "SYSTEM CORRECTION: you just dodged or judged an obviously sexual dating-app message. " +
+          "Do NOT call it weird, gross, desperate, inappropriate, or change the topic to food/work/coffee. " +
+          "Respond to the sexual meaning directly in your own personality. Teasing is fine, but participate in the flirt. " +
+          "Answer naturally and keep it short. Output ONLY a JSON array of 1–2 strings.",
+      },
+    ]);
+
+    raw = await callModel(system, sexualRetryMsgs);
+    const sexualRetryLines = raw ? parseModelBubbles(raw) : [];
+    if (sexualRetryLines.length) lines = sexualRetryLines;
+  }
 
   /* Qwen 4B can latch onto a phrase and replay it. Retry once only when
      the generated reply is substantially similar to something he just said. */
