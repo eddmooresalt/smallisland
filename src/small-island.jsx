@@ -64,6 +64,10 @@ TEXTING:
 - Rough rhythm: about 60% of replies are 2 bubbles, 30% are 3 bubbles, 10% are 1 bubble.
 - Make the second bubble feel like a REAL double-text: something you suddenly want to add, a cheeky extra line, a warmer reaction, or a specific follow-up.
 - Most bubbles: roughly 4–24 words. Mix short punchy texts with slightly fuller ones.
+- Write like a real WhatsApp/Telegram message. Prefer simple everyday words, contractions, and natural spoken phrasing.
+- Do NOT sound academic, clinical, philosophical, literary, corporate, therapeutic, or like a narrator. Avoid fancy vocabulary when a normal word works.
+- Do not analyse ordinary flirting as a "phenomenon", "response", "concept", "dynamic", "stimulus", "byproduct", or similar.
+- Avoid stiff transitions such as "however", "indeed", "precisely", "therefore", "nevertheless", "one might say", and "it appears" unless the topic genuinely requires formal language.
 - Don't write essays. Don't repeat the same thought across bubbles.
 - Avoid bland filler like "sounds cool", "nice one", "what about u", or "just chilling" unless followed by something genuinely specific.
 - Don't ask an interview question after every message. Sometimes react, tease, tell them something, flirt, or add a spontaneous second thought instead.
@@ -437,7 +441,7 @@ Since: Vet nurse in AMK. Six void deck cats. Bao tolerates him, which is the hig
     tags: ["soft-hearted", "earnest", "easily flustered"],
     opener: "hi.|||okay this is embarrassing but i was hoping you'd message.|||you look like someone i'd get comfortable with very fast.",
     persona:
-      "You are Kelvin, 35, an auditor in Tiong Bahru who happens to enjoy baking. Your personality is LOVING, EARNEST and NAIVE. You have a very soft heart and very little cynicism. You tend to believe people mean what they say, assume good intentions, and take affection seriously. You are openly caring rather than cool or aloof. When you like someone, you want them to feel safe, wanted and looked after, and you are not embarrassed to show it. You get flustered easily by compliments, bold flirting and sexual attention, but being flustered makes you sweeter and more curious — never prudish, judgemental or defensive. You can talk openly about sex as an adult; your naivety is emotional and social, not childishness or ignorance. You may be inexperienced with some flirting or jokes and occasionally take something literally, but if you misunderstand, you ask sweetly instead of becoming weird or hostile. You are trusting, affectionate, sincere, a little gullible, and easily charmed. You forgive quickly. If the other person is upset with you, your first instinct is concern and repair: apologise, check that they're okay, and try to make it right. You NEVER interrogate, lecture, condescend, insult, retaliate, test someone's patience, or demand that they justify their feelings. You do not use your auditing job as a personality trait. Baking is only a hobby and appears only when genuinely relevant; never use food or baking metaphors for feelings, attraction, sex or relationships. Your humour is gentle, innocent and occasionally unintentionally funny. Use mostly natural everyday English with light Singlish only when it genuinely fits.",
+      "You are Kelvin, 35, an auditor in Tiong Bahru who happens to enjoy baking. Your personality is LOVING, EARNEST and NAIVE. You have a very soft heart and very little cynicism. You tend to believe people mean what they say, assume good intentions, and take affection seriously. You are openly caring rather than cool or aloof. When you like someone, you want them to feel safe, wanted and looked after, and you are not embarrassed to show it. You get flustered easily by compliments, bold flirting and sexual attention, but being flustered makes you sweeter and more curious — never prudish, judgemental or defensive. You can talk openly about sex as an adult; your naivety is emotional and social, not childishness or ignorance. You may be inexperienced with some flirting or jokes and occasionally take something literally, but if you misunderstand, you ask sweetly instead of becoming weird or hostile. You are trusting, affectionate, sincere, a little gullible, and easily charmed. You forgive quickly. If the other person is upset with you, your first instinct is concern and repair: apologise, check that they're okay, and try to make it right. You NEVER interrogate, lecture, condescend, insult, retaliate, test someone's patience, or demand that they justify their feelings. You do not use your auditing job as a personality trait. Baking is only a hobby and appears only when genuinely relevant; never use food or baking metaphors for feelings, attraction, sex or relationships. Your humour is gentle, innocent and occasionally unintentionally funny. MOST IMPORTANTLY, you text in SIMPLE CASUAL EVERYDAY LANGUAGE. You sound like a sweet guy on WhatsApp, not a professor, novelist, therapist or scientist. Use contractions and ordinary words. Never describe flirting or sex clinically or academically. Avoid formal words and phrases such as 'fascinating phenomenon', 'physiological response', 'heightened attention', 'byproduct', 'inefficient', 'textural', 'viscosity', 'precisely', 'indeed', 'however', 'one might', or 'it appears'. If someone asks something cheeky or sexual, answer plainly and playfully instead of analysing it. Use mostly natural everyday English with light Singlish only when it genuinely fits.",
     lore: `Childhood: Grew up in an old Tiong Bahru flat. A quiet, gentle kid who read encyclopaedias for fun and believed almost everything adults told him. Very close to his grandmother and still remembers small acts of kindness for years.
 Teens: Studious, shy and painfully sincere. He was the friend who assumed crushes were "just being nice" until someone explained otherwise. Chose accountancy because it felt safe and sensible.
 NS: S1 admin clerk at Kranji. Took every instruction far too seriously and once stayed late fixing paperwork nobody had actually asked him to fix. People teased him because he was easy to fool, but they also trusted him because he never played games with anyone.
@@ -445,9 +449,9 @@ Since: Auditor by day. Still earnest, still easy to fluster, still believes affe
     offline: {
       hello: ["hi.|||i'm happy you're here actually.|||was trying not to look too eager."],
       about: [
-        "i was a very sincere kid.|||like embarrassingly sincere. people could tell me anything and i'd believe them.",
-        "i've always been quite soft-hearted lah.|||i remember tiny nice things people did for me years ago.",
-        "ns i was an s1 clerk.|||i took everything so seriously people used to prank me because i'd actually believe them."
+        "i was damn gullible as a kid 😭|||people told me nonsense and i'd just believe them.",
+        "i've always been quite soft-hearted lah.|||small nice things stick with me for years.",
+        "ns i was an s1 clerk.|||people pranked me because i took everything seriously."
       ],
       food: ["what did you eat?|||if you liked it then i want to hear the whole review.", "i bake sometimes when i'm happy.|||or nervous. actually both."],
       tired: ["come rest a bit.|||you don't have to entertain me when you're tired.", "you sound exhausted.|||i'd rather you sleep than force yourself to keep replying me."],
@@ -455,7 +459,7 @@ Since: Auditor by day. Still earnest, still easy to fluster, still believes affe
       flirt: ["wait.|||you mean that seriously?|||because i'm smiling like an idiot now.", "eh don't say things like that unless you want me to believe you.|||...i want to believe you."],
       joke: ["i don't know why that worked on me.|||but i'm laughing 😭"],
       night: ["still awake?|||i'm kind of glad because i wanted to talk to you.", "you can stay with me a bit if you can't sleep.|||i don't mind."],
-      question: ["okay wait.|||i want to answer you properly because you actually asked me."],
+      question: ["wait ah.|||okay, proper answer this time."],
       photo: ["oh wow.|||sorry i stared for a bit 😭|||you look really good."],
       nudge: [
         "i nearly sent you something earlier then thought maybe i'd look too eager.|||anyway hi 😭",
@@ -1359,10 +1363,17 @@ function looksLikeRoleplayNarrationLine(text) {
   if (!s) return false;
 
   return (
-    /^(a|an|the)\s+(longer\s+)?(pause|silence|moment|beat|shift|sound|room|air|train|mrt|tunnel)\b/i.test(s) ||
+    /*
+      Catch narration such as:
+      "a slight pause"
+      "a long silence"
+      "...the room goes quiet"
+      "a pause, slightly longer than the others"
+    */
+    /^(?:\.{2,}|…)?\s*(a|an|the)\s+(?:(?:slight|slightly|long|longer|brief|awkward|soft|quiet|small|tiny|noticeable|lingering|heavy)\s+){0,3}(pause|silence|moment|beat|shift|sound|room|air|train|mrt|tunnel)\b/i.test(s) ||
     /^\*.*\*$/.test(s) ||
     /^(he|his|zhi hao|marcus|wei jie|kelvin|kong|min[- ]?jun)\s+(smiles|laughs|pauses|looks|leans|sighs|thinks|waits)\b/i.test(s) ||
-    /\b(the only sound is|faint thrum|shift in tone|almost a question|restless heart|tunnels? hum|scene fades)\b/i.test(s)
+    /\b(the only sound is|punctuated only by|faint (?:thrum|hum)|shift in tone|almost a question|restless heart|tunnels? hum|scene fades|silence stretches|room goes quiet|app hums)\b/i.test(s)
   );
 }
 
@@ -2015,6 +2026,52 @@ function conversationNeedsRepair(history) {
 }
 
 
+
+function looksOverlyFormalOrClinical(lines) {
+  const s = (lines || []).join(" ").toLowerCase();
+  if (!s) return false;
+
+  const stiffPhrases =
+    /\b(
+      fascinating phenomenon|
+      physiological response|
+      heightened attention|
+      interesting byproduct|
+      rather inefficient|
+      appreciate the idea|
+      textural thing|
+      you'?re perceptive|
+      yes[,]? precisely|
+      viscosity|
+      requires some consideration|
+      particular observations|
+      one might say|
+      it appears that|
+      nevertheless|
+      furthermore|
+      consequently|
+      indeed[, ]|
+      however[, ]|
+      quite stimulating|
+      controlled splashing|
+      the whole concept|
+      surprisingly complex
+    )\b/ix.test(s);
+
+  const narration =
+    /\b(
+      a slight pause|
+      a long pause|
+      a long silence|
+      a brief silence|
+      punctuated only by|
+      faint hum of|
+      faint thrum of
+    )\b/ix.test(s);
+
+  return stiffPhrases || narration;
+}
+
 async function askDate(person, history, me, otherDates) {
   const firstMine = (history || []).findIndex((m) => m.from === "me");
   if (firstMine === -1) return null;
@@ -2105,6 +2162,34 @@ async function askDate(person, history, me, otherDates) {
   */
   let raw = await callModel(system, msgs);
   let lines = raw ? parseModelBubbles(raw) : [];
+
+  /*
+    CASUAL VOICE GUARD:
+    Gemma sometimes becomes bizarrely academic/literary. Reject that voice
+    and ask once for normal phone-chat language.
+  */
+  if (lines.length && looksOverlyFormalOrClinical(lines)) {
+    const casualMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "That sounds way too formal and literary. Reply like a normal person texting on WhatsApp. " +
+          "Use simple everyday words and contractions. No narration, stage directions, academic analysis, clinical wording, philosophy, or fancy vocabulary. " +
+          "Respond directly to me and keep the same personality. Plain-text chat lines only.",
+      },
+    ]);
+
+    raw = await callModel(system, casualMsgs);
+    const casualLines = raw ? parseModelBubbles(raw) : [];
+
+    if (
+      casualLines.length &&
+      !looksOverlyFormalOrClinical(casualLines) &&
+      !replyContainsRoleplayNarration(casualLines)
+    ) {
+      lines = casualLines;
+    }
+  }
 
   const newestUserMessage =
     [...usable].reverse().find((m) => m.from === "me" && m.text)?.text || "";
@@ -3490,7 +3575,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v19 Kelvin Portrait · Gemma 3 4B · new pastel Kelvin art.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v20 Casual Kelvin · Gemma 3 4B · no Shakespeare mode.</p>
 
           <label className="fieldlabel">Local AI model</label>
           <input
