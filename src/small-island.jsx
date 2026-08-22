@@ -75,6 +75,8 @@ TEXTING:
 - Use Singlish lightly only when it naturally fits that person. Plain natural English is completely fine. Do not force local slang into every reply.
 - FORMAT: output ONLY the actual chat messages as plain text.
 - Put ONE chat bubble per line. Prefer 2–3 lines; 1 line only when it genuinely fits.
+- EVERY bubble must be a complete thought. Never stop mid-sentence or end on a dangling setup such as "let", "let me", "let\'s just say", "tell you what", "because", "and", or "but".
+- Before sending, mentally finish every sentence. If a thought is too long, rewrite it shorter instead of chopping it off.
 - TEXT ONLY. Never write stage directions, narration, scene-setting, inner monologue, prose descriptions, or roleplay actions.
 - Never prefix a message with your own name.
 - Speak only as yourself in first person, like an actual phone message. Do not narrate yourself in third person.
@@ -1343,18 +1345,32 @@ function trimBubbleToWords(text, maxWords = 28) {
   if (words.length <= maxWords) return clean;
 
   /*
-    Prefer a natural completed sentence before the cap. If none exists,
-    shorten the line rather than allowing an essay.
+    Never manufacture an incomplete sentence just to obey the word cap.
+    First prefer a finished sentence before the soft cap.
   */
-  for (let i = maxWords - 1; i >= Math.min(10, maxWords - 10); i--) {
+  for (let i = maxWords - 1; i >= Math.min(8, maxWords - 12); i--) {
     if (/[.!?…]["')\]]?$/.test(words[i] || "")) {
       return cleanProtocolDebris(words.slice(0, i + 1).join(" "));
     }
   }
 
-  return cleanProtocolDebris(
-    words.slice(0, maxWords).join(" ").replace(/[,;:—-]+$/, "") + "…"
-  );
+  /*
+    If the sentence finishes shortly AFTER the soft cap, allow it to finish.
+    A slightly longer complete WhatsApp text is much better than "Tell you what — let".
+  */
+  const hardMax = Math.min(words.length, maxWords + 14);
+  for (let i = maxWords; i < hardMax; i++) {
+    if (/[.!?…]["')\]]?$/.test(words[i] || "")) {
+      return cleanProtocolDebris(words.slice(0, i + 1).join(" "));
+    }
+  }
+
+  /*
+    No safe sentence boundary found: keep the original intact.
+    The final coherence guard can reject/regenerate it if the MODEL itself
+    ended mid-thought.
+  */
+  return clean;
 }
 
 
@@ -1507,6 +1523,19 @@ function looksDanglingSentence(text) {
   if (danglingWords.has(last)) return true;
 
   /*
+    Common conversational setups that are NOT complete replies by themselves.
+    These specifically catch Gemma endings like:
+    "Let's just say"
+    "Tell you what - let"
+    "Okay, let me"
+  */
+  if (
+    /\b(?:let|let me|lemme|let'?s just say|tell you what(?:\s*[-–—]\s*let)?|the thing is|what i mean is|i was going to|i'?m going to|i want to|i wanted to)\s*$/i.test(stripped)
+  ) {
+    return true;
+  }
+
+  /*
     Very short replies are fine only when they look like complete chat words.
     This catches damaged fragments without banning normal "ok", "nah", "lol".
   */
@@ -1527,6 +1556,10 @@ function looksDanglingSentence(text) {
 function hasDanglingTail(lines) {
   if (!lines || !lines.length) return false;
   return looksDanglingSentence(lines[lines.length - 1]);
+}
+
+function hasAnyDanglingLine(lines) {
+  return (lines || []).some((line) => looksDanglingSentence(line));
 }
 
 function dropDanglingTail(lines) {
@@ -2251,9 +2284,36 @@ async function askDate(person, history, me, otherDates) {
     }
   }
 
-  /* Output safety only — this does not tell the model how to behave. */
-  lines = dropDanglingTail(lines)
+  /*
+    COMPLETE-SENTENCE GUARD:
+    Never display a model reply that ends mid-thought. Retry once with a very
+    focused instruction. If Gemma still produces a fragment, remove that
+    fragment; if nothing complete remains, return null so the normal scripted
+    fallback can answer instead.
+  */
+  if (lines.length && hasAnyDanglingLine(lines)) {
+    const completeMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "Your draft contains an unfinished sentence. Rewrite the whole reply as 1–3 short natural chat messages. " +
+          "EVERY message must be a complete thought. Do not end with 'let', 'let me', 'let's just say', 'tell you what', 'because', 'and', 'but', or any other unfinished setup. " +
+          "Do not mention this correction. Just send the finished WhatsApp-style reply, one bubble per line.",
+      },
+    ]);
+
+    raw = await callModel(system, completeMsgs);
+    const completeLines = raw ? parseModelBubbles(raw) : [];
+
+    if (completeLines.length && !hasAnyDanglingLine(completeLines)) {
+      lines = completeLines;
+    }
+  }
+
+  /* Output safety: incomplete bubbles are never allowed onto screen. */
+  lines = (lines || [])
     .filter(Boolean)
+    .filter((line) => !looksDanglingSentence(line))
     .slice(0, 3);
 
   return lines.length ? lines : null;
@@ -3491,7 +3551,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v21 Deploy Fix · Gemma 3 4B · Casual Kelvin.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v22 Complete Sentences · Gemma 3 4B · Casual Kelvin.</p>
 
           <label className="fieldlabel">Local AI model</label>
           <input
