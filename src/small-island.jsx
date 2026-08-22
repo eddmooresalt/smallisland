@@ -1922,66 +1922,14 @@ function looksDefensiveDuringRepair(lines) {
   const s = (lines || []).join(" ").toLowerCase();
   if (!s) return false;
 
-  return /\b(
-    you'?re being dramatic|
-    dramatic flourish|
-    strong word|
-    quite the word|
-    overreact|
-    oversensitive|
-    too sensitive|
-    testing my patience|
-    making this difficult|
-    difficult to enjoy|
-    calm down|
-    hold on|
-    slow down|
-    that'?s on you|
-    your problem|
-    not my fault|
-    whatever|
-    fine then|
-    stop then|
-    just stop|
-    tell me something interesting|
-    pointless|
-    irritating|
-    bit rich|
-    coming from someone|
-    be specific|
-    specific please|
-    vague assessment|
-    vague accusation|
-    particular observations?|
-    what exactly am i doing|
-    what exactly did i do|
-    qualifies as|
-    requires some consideration|
-    justify|
-    prove it|
-    explain why i|
-    why would you call me|
-    why would you say that
-  )\b/ix.test(s);
+  return /\b(?:you'?re being dramatic|dramatic flourish|strong word|quite the word|overreact|oversensitive|too sensitive|testing my patience|making this difficult|difficult to enjoy|calm down|hold on|slow down|that'?s on you|your problem|not my fault|whatever|fine then|stop then|just stop|tell me something interesting|pointless|irritating|bit rich|coming from someone|be specific|specific please|vague assessment|vague accusation|particular observations?|what exactly am i doing|what exactly did i do|qualifies as|requires some consideration|justify|prove it|explain why i|why would you call me|why would you say that)\b/i.test(s);
 }
 
 function looksLikeCounterAttack(lines) {
   const s = (lines || []).join(" ").toLowerCase();
   if (!s) return false;
 
-  return /\b(
-    you'?re (annoying|rude|dramatic|difficult|boring|weird|a weirdo|irritating)|
-    you are (annoying|rude|dramatic|difficult|boring|weird|a weirdo|irritating)|
-    your fault|
-    you started|
-    you keep doing|
-    you always|
-    you never|
-    coming from you|
-    coming from someone|
-    that'?s rich|
-    bit rich
-  )\b/ix.test(s);
+  return /\b(?:you'?re (?:annoying|rude|dramatic|difficult|boring|weird|a weirdo|irritating)|you are (?:annoying|rude|dramatic|difficult|boring|weird|a weirdo|irritating)|your fault|you started|you keep doing|you always|you never|coming from you|coming from someone|that'?s rich|bit rich)\b/i.test(s);
 }
 
 function looksLikeRepairAttempt(lines) {
@@ -2032,42 +1980,10 @@ function looksOverlyFormalOrClinical(lines) {
   if (!s) return false;
 
   const stiffPhrases =
-    /\b(
-      fascinating phenomenon|
-      physiological response|
-      heightened attention|
-      interesting byproduct|
-      rather inefficient|
-      appreciate the idea|
-      textural thing|
-      you'?re perceptive|
-      yes[,]? precisely|
-      viscosity|
-      requires some consideration|
-      particular observations|
-      one might say|
-      it appears that|
-      nevertheless|
-      furthermore|
-      consequently|
-      indeed[, ]|
-      however[, ]|
-      quite stimulating|
-      controlled splashing|
-      the whole concept|
-      surprisingly complex
-    )\b/ix.test(s);
+    /\b(?:fascinating phenomenon|physiological response|heightened attention|interesting byproduct|rather inefficient|appreciate the idea|textural thing|you'?re perceptive|yes[,]? precisely|viscosity|requires some consideration|particular observations|one might say|it appears that|nevertheless|furthermore|consequently|indeed[, ]|however[, ]|quite stimulating|controlled splashing|the whole concept|surprisingly complex)\b/i.test(s);
 
   const narration =
-    /\b(
-      a slight pause|
-      a long pause|
-      a long silence|
-      a brief silence|
-      punctuated only by|
-      faint hum of|
-      faint thrum of
-    )\b/ix.test(s);
+    /\b(?:a slight pause|a long pause|a long silence|a brief silence|punctuated only by|faint hum of|faint thrum of)\b/i.test(s);
 
   return stiffPhrases || narration;
 }
@@ -3575,7 +3491,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v20 Casual Kelvin · Gemma 3 4B · no Shakespeare mode.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v21 Deploy Fix · Gemma 3 4B · Casual Kelvin.</p>
 
           <label className="fieldlabel">Local AI model</label>
           <input
