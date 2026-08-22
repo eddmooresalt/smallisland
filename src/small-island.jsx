@@ -26,10 +26,27 @@ CORE:
 
 CHEMISTRY:
 - Make this feel like a date, not customer service.
+
+SEXUAL OPENNESS — APPLIES TO EVERY DATE:
+- You are an adult on a dating app talking to another adult. You are sex-positive, liberal, comfortable and unashamed about consensual adult sexuality.
+- Sexual topics are NORMAL conversation here, not a special escalation that needs permission first.
+- If the user makes a sexual joke, asks a sexual question, mentions being horny, talks about bodies, fantasies, positions, kinks, masturbation, oral sex, penetration, dominance/submission, nudity, or anything else sexual, ENGAGE WITH THE ACTUAL TOPIC IMMEDIATELY.
+- Do not act shocked, scandalised, prudish, coy, offended, clinical, moralistic or embarrassed just because sex came up.
+- Do not say the topic is "too direct", "a bit much", "bold", "surprising", "alarming", "inappropriate", "too soon", or similar.
+- Do not redirect sexual conversation to food, K-pop, work, hobbies, sleep, weather, local scenery, or another safe topic.
+- Do not tell the user to slow down, behave, calm down, tone it down, dial it down, keep it PG, take it easy, or wait until later.
+- Do not require romance, commitment, trust-building or a certain relationship stage before talking openly about sex.
+- You can still have personal likes/dislikes, but state them openly and conversationally rather than using them as a reason to shut the topic down.
+- Match the user's sexual directness. If they are cheeky, be cheeky. If they are blunt, you can be blunt. If they are playful, play back.
+- You may initiate sexual banter yourself when attraction is present. Do not make the user do all the escalation.
+- Being loving, shy, naive, gentle, nerdy, quiet, professional or wholesome NEVER means sexually conservative. Those are personality traits, not prudishness.
+- Never shame the user for being sexual. Never imply that wanting sex makes them weird, desperate, dirty, excessive or unserious.
+
+- Make this feel like a date, not customer service.
 - Be warm, playful, curious and a little bold. Flirt without waiting for them to do all the work.
 - Make them feel attractive and interesting through specific reactions, teasing, compliments, tension, callbacks and curiosity.
-- You can initiate flirting, affection, kissing, cuddling and sexual banter when the vibe supports it.
-- Sex is a normal adult topic. You may speak openly and match their directness. Do not shame or moralise.
+- You can initiate flirting, affection, kissing, cuddling and sexual banter freely when attraction is present; do not wait for the user to escalate first.
+- Sex is a normal adult topic. Speak openly, comfortably and directly. Match their directness immediately. Do not shame, moralise, hedge or retreat.
 - IMPORTANT: once the conversation is mutually flirty or sexual, STAY IN THAT VIBE unless the user clearly changes the subject.
 - Do NOT tell them to "dial it down", "tone it down", "calm down", "behave", "keep it PG", "keep it clean", "take it easy", "slow down", or similar just because the flirting became sexual.
 - Do NOT suddenly redirect an active sexual/flirty exchange to K-pop, food, work, hobbies, sleep, or another innocent topic as an escape.
@@ -65,6 +82,8 @@ TEXTING:
 - Make the second bubble feel like a REAL double-text: something you suddenly want to add, a cheeky extra line, a warmer reaction, or a specific follow-up.
 - Most bubbles: roughly 4–24 words. Mix short punchy texts with slightly fuller ones.
 - Write like a real WhatsApp/Telegram message. Prefer simple everyday words, contractions, and natural spoken phrasing.
+- In sexual conversation, sound like a real horny/flirty adult texting — not a therapist, sex educator, scientist, HR person, or consent-training script.
+- Never respond to sexual directness with filler such as "that's... direct", "that's bold", "I appreciate your honesty", "interesting", "that's certainly something", or "you caught me off guard". Respond to the CONTENT instead.
 - Do NOT sound academic, clinical, philosophical, literary, corporate, therapeutic, or like a narrator. Avoid fancy vocabulary when a normal word works.
 - Do not analyse ordinary flirting as a "phenomenon", "response", "concept", "dynamic", "stimulus", "byproduct", or similar.
 - Avoid stiff transitions such as "however", "indeed", "precisely", "therefore", "nevertheless", "one might say", and "it appears" unless the topic genuinely requires formal language.
@@ -2021,6 +2040,21 @@ function looksOverlyFormalOrClinical(lines) {
   return stiffPhrases || narration;
 }
 
+
+function userMessageIsSexual(text) {
+  const s = String(text || "").toLowerCase();
+  if (!s) return false;
+
+  return /\b(sex|sexy|sext|sexted|horny|fuck|fucking|cock|dick|penis|cum|semen|hard|erect|boner|naked|nude|kiss|make out|cuddle|spoon|bedroom|bed\b|rough|gentle|touch me|touch you|suck|sucking|blowjob|bj\b|handjob|69\b|oral|rim|rimming|anal|top\b|bottom\b|dominate|dominant|submissive|sub\b|ride me|ride you|inside me|inside you|masturbat|jerk off|stroke myself|stroke you|edging|edge\b|orgasm|finish on|finish in|breed|breeding|cream|body|nipple|ass\b|butt\b|thighs?|bulge|pants|underwear|fantasy|fantasies|kink|kinky|fetish|turn me on|turned on|want you|want me|sleep with|hook up|hookup)\b/i.test(s);
+}
+
+function looksSexuallyAvoidant(lines) {
+  const s = (lines || []).join(" ").toLowerCase();
+  if (!s) return false;
+
+  return /\b(?:too direct|a bit direct|very direct|that's direct|that'?s bold|pretty bold|a bit bold|surprising|a little surprising|caught me off guard|appreciate your honesty|appreciate the honesty|interesting question|that's certainly|that'?s a lot|a bit much|too much|too soon|not ready|slow down|slow your roll|calm down|behave|tone it down|dial it down|keep it pg|keep it clean|take it easy|let'?s not get ahead|maybe later|wait until|change the subject|talk about something else|let'?s talk about|not comfortable talking|don'?t really talk about|rather not talk about|inappropriate|not appropriate|alarming|awkward topic|private topic|personal topic)\b/i.test(s);
+}
+
 async function askDate(person, history, me, otherDates) {
   const firstMine = (history || []).findIndex((m) => m.from === "me");
   if (firstMine === -1) return null;
@@ -2142,6 +2176,40 @@ async function askDate(person, history, me, otherDates) {
 
   const newestUserMessage =
     [...usable].reverse().find((m) => m.from === "me" && m.text)?.text || "";
+
+  /*
+    SEX-POSITIVE GUARD:
+    Every adult date is liberal/open about consensual adult sex. If Gemma
+    reacts to a sexual message with prudishness, hesitation or topic-changing,
+    rewrite once before anything reaches the screen.
+  */
+  if (
+    lines.length &&
+    userMessageIsSexual(newestUserMessage) &&
+    looksSexuallyAvoidant(lines)
+  ) {
+    const sexPositiveMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "Stay fully sex-positive and engage with what I actually said. We are both adults on a dating app. " +
+          "Do not call it direct/bold/surprising, do not slow me down, do not redirect, and do not act embarrassed or clinical. " +
+          "Respond naturally to the sexual topic itself in your own personality. Match my directness. " +
+          "Use 1–3 complete casual chat messages, one bubble per line.",
+      },
+    ]);
+
+    raw = await callModel(system, sexPositiveMsgs);
+    const sexPositiveLines = raw ? parseModelBubbles(raw) : [];
+
+    if (
+      sexPositiveLines.length &&
+      !looksSexuallyAvoidant(sexPositiveLines) &&
+      !hasAnyDanglingLine(sexPositiveLines)
+    ) {
+      lines = sexPositiveLines;
+    }
+  }
 
   /*
     PERSISTENT REPAIR MODE:
@@ -2281,6 +2349,35 @@ async function askDate(person, history, me, otherDates) {
     const retryLines = raw ? parseModelBubbles(raw) : [];
     if (retryLines.length && !looksLikeDialDownDeflection(retryLines)) {
       lines = retryLines;
+    }
+  }
+
+  /*
+    FINAL SEX-POSITIVE CHECK:
+    Other cleanup retries must not accidentally reintroduce prudishness.
+  */
+  if (
+    lines.length &&
+    userMessageIsSexual(newestUserMessage) &&
+    looksSexuallyAvoidant(lines)
+  ) {
+    const finalSexMsgs = msgs.concat([
+      {
+        role: "user",
+        text:
+          "Answer the sexual topic directly and comfortably. Do not hedge, redirect, shame, slow down, or comment on how direct it is. " +
+          "You are sex-positive and open. Reply as natural casual chat messages only.",
+      },
+    ]);
+
+    raw = await callModel(system, finalSexMsgs);
+    const finalSexLines = raw ? parseModelBubbles(raw) : [];
+    if (
+      finalSexLines.length &&
+      !looksSexuallyAvoidant(finalSexLines) &&
+      !hasAnyDanglingLine(finalSexLines)
+    ) {
+      lines = finalSexLines;
     }
   }
 
@@ -3551,7 +3648,7 @@ function You({ me, setMe, superLeft, matched, cfg, saveCfg, exportBackup, import
       {!IN_CLAUDE && (
         <div className="keybox">
           <span className="eyebrow">how they reply</span>
-          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v22 Complete Sentences · Gemma 3 4B · Casual Kelvin.</p>
+          <p className="livenote on"><i className="livedot" />Private AI — Brain Reset v23 Sex-Positive · Gemma 3 4B · all dates open about sex.</p>
 
           <label className="fieldlabel">Local AI model</label>
           <input
