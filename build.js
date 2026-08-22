@@ -17,5 +17,21 @@ esbuild.buildSync({
   outfile: path.join(outdir, "app.js"),
 });
 
-fs.copyFileSync(path.join(__dirname, "public", "index.html"), path.join(outdir, "index.html"));
-console.log("Built Small Island vNext to /dist —", fs.statSync(path.join(outdir, "app.js")).size, "bytes");
+// Always give app.js a fresh URL so the phone cannot keep an old cached bundle.
+const sourceIndex = fs.readFileSync(
+  path.join(__dirname, "public", "index.html"),
+  "utf8"
+);
+const buildTag = `auto-${Date.now()}`;
+const builtIndex = sourceIndex.replace(
+  /\/app\.js(?:\?v=[^"'<> ]*)?/,
+  `/app.js?v=${buildTag}`
+);
+fs.writeFileSync(path.join(outdir, "index.html"), builtIndex);
+
+console.log(
+  "Built Small Island vNext to /dist —",
+  fs.statSync(path.join(outdir, "app.js")).size,
+  "bytes —",
+  buildTag
+);
